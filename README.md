@@ -64,6 +64,10 @@ In alternativa da terminale: `python -m http.server 8000` nella cartella del pro
 
 ## Pubblicazione su GitHub Pages
 
+**L'app è già pubblicata** su **<https://apeepisoft.github.io/ruolino/>**
+(repository <https://github.com/ApeEpiSoft/ruolino>). Ogni `git push` su `main` la aggiorna in 1-2 minuti.
+I passi qui sotto servono solo per ripubblicarla da zero, per esempio con un altro account.
+
 Serve un account gratuito su <https://github.com>.
 Il repository deve essere **pubblico**: con il piano gratuito GitHub Pages funziona solo così.
 Diventa pubblico solo il codice. I tuoi dati restano su Dropbox e non finiscono mai su GitHub.
@@ -88,7 +92,7 @@ Diventa pubblico solo il codice. I tuoi dati restano su Dropbox e non finiscono 
    - Branch: **main** e cartella **/ (root)**.
 
    Poi **Save**.
-4. Dopo 1-2 minuti l'app è online su **`https://TUO-UTENTE.github.io/ruolino/`**.
+4. Dopo 1-2 minuti l'app è online su **`https://TUO-UTENTE.github.io/ruolino/`** (in minuscolo).
    L'avanzamento si vede nella scheda **Actions**, dove girano anche i test automatici a ogni push.
 
 ---
@@ -109,8 +113,11 @@ Vede **solo la propria cartella** (`Dropbox/Applicazioni/<nome app>/`) e nient'a
    *Se cambi i permessi dopo esserti collegato, scollega e ricollega i dispositivi.*
 4. Scheda **Settings**, sezione **OAuth 2**:
    - **Redirect URIs**: aggiungi (uno alla volta, con **Add**) gli indirizzi da cui userai l'app, **con la barra finale**:
-     - `https://TUO-UTENTE.github.io/ruolino/`
+     - `https://apeepisoft.github.io/ruolino/`
      - `http://localhost:8000/` (solo se vuoi sincronizzare anche la versione locale)
+
+     Devono coincidere carattere per carattere (minuscole, `https`, barra finale), altrimenti Dropbox risponde "Invalid redirect_uri".
+     L'indirizzo esatto di ogni pagina è mostrato anche in **Impostazioni → Sincronizzazione Dropbox**.
    - **Allow public clients (Implicit Grant & PKCE)**: deve essere **Allow**.
 5. Sempre in **Settings** copia la **App key**. È un identificativo pubblico, non un segreto: **non** serve l'*App secret*.
 6. Inserisci la App key nell'app in uno di questi due modi:
@@ -125,7 +132,7 @@ Lo stato *Development* dell'app Dropbox va benissimo per l'uso personale: non se
 
 Su ogni dispositivo (PC e telefono):
 
-1. Apri `https://TUO-UTENTE.github.io/ruolino/`.
+1. Apri <https://apeepisoft.github.io/ruolino/>.
 2. Vai in **Impostazioni → Collega a Dropbox**, accedi a Dropbox e clicca **Consenti**: torni all'app collegato.
 3. La prima sincronizzazione unisce i dati del dispositivo con quelli su Dropbox. Il primo dispositivo crea il file.
    Fallo per primo dal dispositivo che ha già i dati.
