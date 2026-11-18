@@ -6,7 +6,7 @@ import { test, assert } from './runner.js';
 import { keyBetween, compareOrder } from '../js/core/order.js';
 import {
   createEmptyDoc, addTask, updateTask, deleteTask, moveTask, macros, children,
-  summary, addLog, setRemaining, live, setException, capacityOn, normalizeDoc,
+  summary, addLog, setRemaining, live, setException, capacityOn, normalizeDoc, statoEffettivo,
 } from '../js/core/model.js';
 import { addDays, weekday, diffDays } from '../js/core/dates.js';
 
@@ -81,9 +81,10 @@ test('modello: ore lavorate = somma delle registrazioni; aggregazione su macro',
   assert.equal(s.worked, 4);
   assert.equal(s.remaining, 6);
   assert.equal(summary(d, s1.id).remaining, 1.5);
-  assert.equal(d.tasks[s1.id].status, 'doing', 'registrare ore avvia l\'attività');
-  assert.equal(d.tasks[m.id].status, 'doing');
-  assert.equal(d.tasks[s2.id].status, 'todo');
+  assert.equal(d.tasks[s1.id].status, 'todo', 'registrare ore non modifica il record dell\'attività');
+  assert.equal(statoEffettivo(d, d.tasks[s1.id]), 'doing', 'ma l\'attività risulta in corso');
+  assert.equal(statoEffettivo(d, d.tasks[m.id]), 'doing');
+  assert.equal(statoEffettivo(d, d.tasks[s2.id]), 'todo');
 });
 
 test('modello: correggere il residuo cambia la stima corrente, non l\'originale', () => {

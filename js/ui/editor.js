@@ -9,7 +9,7 @@
 import { html, useState, useEffect, fmtOre, fmtNum, parseOre, useSortable } from './util.js';
 import {
   macros, children, summary, addTask, updateTask, deleteTask, moveTask,
-  setRemaining, live, deleteLog, STATI,
+  setRemaining, live, deleteLog, statoEffettivo, STATI,
 } from '../core/model.js';
 import { mutate } from '../store.js';
 import { formatBreve, formatCorto } from '../core/dates.js';
@@ -55,14 +55,14 @@ function RigaSotto({ c, ctx }) {
     <li data-id=${c.id} class="sotto-riga stato-${c.status}">
       <span class="maniglia">⠿</span>
       <input type="checkbox" title="Completata" checked=${c.status === 'done'}
-        onChange=${(e) => agg({ status: e.target.checked ? 'done' : (s.worked > 0 ? 'doing' : 'todo') })} />
+        onChange=${(e) => agg({ status: e.target.checked ? 'done' : 'todo' })} />
       <${Testo} class="s-titolo" valore=${c.title} onSalva=${(v) => agg({ title: v })} />
       <label class="mini">stima<${Ore} valore=${c.estimate} onSalva=${(v) => agg({ estimate: v })} /></label>
       <label class="mini">restano<${Ore} valore=${s.remaining}
         onSalva=${(v) => mutate((d) => setRemaining(d, c.id, v))} disabled=${c.status === 'done'} /></label>
       <span class="s-info">${fmtOre(s.worked)} lav. · <span class=${f.classe}>${c.status === 'done' ? 'fatta' : f.testo}</span></span>
       <button class="icona" title=${c.status === 'paused' ? 'Riprendi' : 'Metti in pausa'}
-        onClick=${() => agg({ status: c.status === 'paused' ? (s.worked > 0 ? 'doing' : 'todo') : 'paused' })}
+        onClick=${() => agg({ status: c.status === 'paused' ? 'todo' : 'paused' })}
         disabled=${c.status === 'done'}>${c.status === 'paused' ? '▶' : '❚❚'}</button>
       <button class="icona elimina" title="Elimina sottoattività"
         onClick=${() => confirm(`Eliminare la sottoattività "${c.title}"?`) && mutate((d) => deleteTask(d, c.id))}>✕</button>
@@ -124,7 +124,7 @@ export function Editor({ id, ctx, onChiudi }) {
 
         <div class="griglia">
           <label>Stato
-            <select value=${m.status} onChange=${(e) => agg({ status: e.target.value })}>
+            <select value=${statoEffettivo(doc, m, wm)} onChange=${(e) => agg({ status: e.target.value })}>
               ${Object.entries(STATI).map(([k, v]) => html`<option value=${k}>${v}</option>`)}
             </select>
           </label>
@@ -205,7 +205,7 @@ export function Editor({ id, ctx, onChiudi }) {
           }}>Elimina</button>
           <span class="spazio"></span>
           ${m.status === 'done'
-            ? html`<button class="sec" onClick=${() => agg({ status: 'doing' })}>Riapri</button>`
+            ? html`<button class="sec" onClick=${() => agg({ status: 'todo' })}>Riapri</button>`
             : html`<button class="ok" onClick=${() => { agg({ status: 'done' }); onChiudi(); }}>✓ Segna completata</button>`}
           <button class="pri" onClick=${onChiudi}>Fatto</button>
         </footer>

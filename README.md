@@ -4,84 +4,237 @@ Web app personale per pianificare le attività di lavoro e **prevedere quando ci
 Non è un Gantt da disegnare: è una coda di lavoro con una capacità giornaliera (ore al giorno).
 Il simulatore riempie i giorni futuri seguendo le priorità e calcola inizio e fine previsti di ogni attività.
 
-**Stato:** fase 1 (MVP locale). I dati restano nel browser in cui usi l'app.
-La sincronizzazione con Dropbox e la pubblicazione su GitHub Pages arrivano con la fase 2.
+- Funziona offline (PWA installabile su Android e PC).
+- I dati sono un unico file JSON sul **tuo** Dropbox, sincronizzato tra i dispositivi senza perdere modifiche.
+- Nessun server da mantenere: è pubblicata gratis su GitHub Pages.
 
 ---
 
-## Avvio in locale (fase 1)
+## Indice
 
-L'app è fatta solo di file statici: non va compilata e non va installato nulla.
-Il browser però non carica i moduli JavaScript aprendo `index.html` con un doppio clic (indirizzo `file://`).
-Serve un piccolo server web locale, e Python, già presente sul PC, basta.
+1. [Uso in breve](#uso-in-breve)
+2. [Avvio in locale (sul PC, senza pubblicare)](#avvio-in-locale)
+3. [Pubblicazione su GitHub Pages](#pubblicazione-su-github-pages)
+4. [Registrare l'app su Dropbox](#registrare-lapp-su-dropbox)
+5. [Collegare i dispositivi e installare l'app](#collegare-i-dispositivi)
+6. [Come funziona la sincronizzazione](#come-funziona-la-sincronizzazione)
+7. [Backup e ripristino](#backup-e-ripristino)
+8. [Pubblicare una nuova versione](#pubblicare-una-nuova-versione)
+9. [Test automatici](#test-automatici)
+10. [Struttura del progetto](#struttura-del-progetto)
 
-**Modo semplice:** doppio clic su `avvia.cmd`. Si apre il browser su <http://localhost:8000>.
-Per fermare il server chiudi la finestra nera.
-
-**Da terminale:**
-
-```
-cd percorso\di\RuolinoDiMarcia
-python -m http.server 8000
-```
-
-poi apri <http://localhost:8000>.
-
-> I dati vengono salvati nell'archivio del browser (IndexedDB), legati all'indirizzo.
-> `localhost:8000` e `127.0.0.1:8000` sono due archivi diversi: usa sempre lo stesso indirizzo.
-> Finché non c'è la sincronizzazione, fai spesso **Impostazioni → Esporta JSON**.
-
-## Test automatici
-
-Con il server avviato, apri <http://localhost:8000/tests/>.
-La pagina esegue i test di scheduler e modello e mostra `RISULTATO: N passati, 0 falliti`.
-
-Con Node.js (sarà usato da GitHub Actions nella fase 2): `node tests/run-node.mjs`.
+---
 
 ## Uso in breve
 
 | Vista | A cosa serve |
 |---|---|
 | **Oggi** | Cosa fare oggi secondo il piano; ✓ per registrare subito le ore; avvisi (ritardi, blocchi, stime esaurite); prossimi giorni |
-| **Coda** | Elenco delle attività in ordine di priorità. Si riordina trascinando la maniglia ⠿. Accanto a ogni voce c'è la fine prevista, in rosso se supera la scadenza. **⚡ Urgenza** inserisce in cima alla coda. L'etichetta **+1g / −1g** è lo slittamento rispetto al piano di ieri |
-| **Registro** | A fine giornata: ore lavorate su una o più attività (scrivi `2,5` o `1:30`, oppure usa +½ +1 +2), correzione delle ore residue, spunta "finita" |
-| **Impostazioni** | Ore per giorno della settimana, eccezioni per data o periodo (ferie, trasferte, giorni parziali), export/import JSON |
+| **Coda** | Le attività in ordine di priorità. Si riordinano trascinando la maniglia ⠿ (anche col dito). Accanto a ogni voce c'è la fine prevista, in rosso se supera la scadenza. **⚡ Urgenza** inserisce in cima. L'etichetta **+1g / −1g** è lo slittamento rispetto al piano di ieri |
+| **Registro** | A fine giornata: ore lavorate su una o più attività (`2,5` o `1:30`, oppure +½ +1 +2), correzione delle ore residue, spunta "finita" |
+| **Impostazioni** | Sincronizzazione Dropbox e backup, conflitti da controllare, ore per giorno della settimana, eccezioni per data o periodo (ferie, trasferte), export/import |
 
 Clic su un'attività: si apre la scheda di dettaglio. Lì ci sono stato, categoria, scadenza, limite ore/giorno,
-stima corrente, stima originale e ore rimanenti, sottoattività (riordinabili), predecessori, note e ore registrate.
-Le modifiche si salvano da sole quando esci dal campo.
+stime, sottoattività (riordinabili), predecessori, note e ore registrate. Le modifiche si salvano da sole.
 
-**Promemoria:** se nell'ultimo giorno lavorativo non hai registrato ore, l'app te lo chiede.
-Puoi rispondere "Inserisci ore" oppure "Non ho lavorato".
+In alto c'è l'indicatore di sincronizzazione:
 
-## Ripristino da file JSON
+| Indicatore | Significato |
+|---|---|
+| ✓ | Sincronizzato |
+| ● | Modifiche da caricare |
+| ↻ | Sincronizzazione in corso |
+| ⚡ | Offline: modifiche salvate sul dispositivo |
+| ⚠ | Errore |
+| ○ | Non collegato |
 
-**Impostazioni → Importa JSON** e scegli un file esportato in precedenza.
-I dati attuali vengono **sostituiti**, quindi prima esportali per sicurezza.
-Nella fase 2 lo stesso procedimento varrà per i backup giornalieri salvati su Dropbox.
+---
 
-## Pubblicazione su GitHub Pages e Dropbox
+## Avvio in locale
 
-*Istruzioni passo passo in arrivo con la fase 2.*
+Per provare l'app sul PC senza pubblicarla: doppio clic su **`avvia.cmd`**.
+Avvia un piccolo server con Python e apre il browser su <http://localhost:8000>; per fermarlo chiudi la finestra nera.
+In alternativa da terminale: `python -m http.server 8000` nella cartella del progetto.
+
+> I dati del browser sono legati all'indirizzo: `localhost:8000` e l'indirizzo pubblicato su GitHub sono **archivi diversi**.
+> Per portare i dati da uno all'altro basta collegare entrambi a Dropbox: si uniscono da soli.
+> In alternativa: *Esporta JSON* da una parte e *Unisci da file* dall'altra.
+
+---
+
+## Pubblicazione su GitHub Pages
+
+Serve un account gratuito su <https://github.com>.
+Il repository deve essere **pubblico**: con il piano gratuito GitHub Pages funziona solo così.
+Diventa pubblico solo il codice. I tuoi dati restano su Dropbox e non finiscono mai su GitHub.
+
+1. **Crea il repository.** Su GitHub clicca **+ → New repository**:
+   - nome `ruolino`;
+   - visibilità **Public**;
+   - *non* aggiungere README, .gitignore o licenza.
+
+   Poi **Create repository**.
+2. **Carica il codice.** Da un terminale nella cartella del progetto (sostituisci `TUO-UTENTE`):
+
+   ```
+   git remote add origin https://github.com/TUO-UTENTE/ruolino.git
+   git push -u origin main
+   ```
+
+   La prima volta Git apre il browser per il login a GitHub.
+   Con GitHub CLI basta invece: `gh repo create ruolino --public --source . --push`.
+3. **Attiva Pages.** Nel repository vai in **Settings → Pages**. In *Build and deployment* scegli:
+   - Source: **Deploy from a branch**;
+   - Branch: **main** e cartella **/ (root)**.
+
+   Poi **Save**.
+4. Dopo 1-2 minuti l'app è online su **`https://TUO-UTENTE.github.io/ruolino/`**.
+   L'avanzamento si vede nella scheda **Actions**, dove girano anche i test automatici a ogni push.
+
+---
+
+## Registrare l'app su Dropbox
+
+L'app accede a Dropbox con le API ufficiali e il login OAuth (PKCE). Non c'è nessuna password o segreto nel codice.
+Vede **solo la propria cartella** (`Dropbox/Applicazioni/<nome app>/`) e nient'altro del tuo Dropbox.
+
+1. Vai su <https://www.dropbox.com/developers/apps> (accedi con il tuo account Dropbox) e clicca **Create app**.
+2. Compila:
+   - *Choose an API*: **Scoped access**;
+   - *Choose the type of access*: **App folder**;
+   - *Name your app*: un nome univoco, per esempio `Ruolino-TuoCognome`. Sarà anche il nome della cartella.
+
+   Poi **Create app**.
+3. Scheda **Permissions**: spunta **files.metadata.read**, **files.content.read** e **files.content.write**, poi clicca **Submit**.
+   *Se cambi i permessi dopo esserti collegato, scollega e ricollega i dispositivi.*
+4. Scheda **Settings**, sezione **OAuth 2**:
+   - **Redirect URIs**: aggiungi (uno alla volta, con **Add**) gli indirizzi da cui userai l'app, **con la barra finale**:
+     - `https://TUO-UTENTE.github.io/ruolino/`
+     - `http://localhost:8000/` (solo se vuoi sincronizzare anche la versione locale)
+   - **Allow public clients (Implicit Grant & PKCE)**: deve essere **Allow**.
+5. Sempre in **Settings** copia la **App key**. È un identificativo pubblico, non un segreto: **non** serve l'*App secret*.
+6. Inserisci la App key nell'app in uno di questi due modi:
+   - **consigliato:** scrivila in `js/config.js` (`export const DROPBOX_APP_KEY = 'la-tua-app-key';`), poi fai commit e push. Vale per tutti i dispositivi;
+   - oppure in **Impostazioni → Sincronizzazione Dropbox** su ogni dispositivo.
+
+Lo stato *Development* dell'app Dropbox va benissimo per l'uso personale: non serve chiedere la "production approval".
+
+---
+
+## Collegare i dispositivi
+
+Su ogni dispositivo (PC e telefono):
+
+1. Apri `https://TUO-UTENTE.github.io/ruolino/`.
+2. Vai in **Impostazioni → Collega a Dropbox**, accedi a Dropbox e clicca **Consenti**: torni all'app collegato.
+3. La prima sincronizzazione unisce i dati del dispositivo con quelli su Dropbox. Il primo dispositivo crea il file.
+   Fallo per primo dal dispositivo che ha già i dati.
+
+**Installare l'app**
+
+- **Android (Chrome):** apri l'indirizzo, menu **⋮ → Installa app** (oppure *Aggiungi a schermata Home*).
+  Si apre a schermo intero come un'app e funziona anche offline.
+- **PC (Edge o Chrome):** icona **Installa** nella barra degli indirizzi. È facoltativo: funziona anche come normale pagina web.
+  Non richiede installazioni di sistema né permessi di amministratore.
+
+---
+
+## Come funziona la sincronizzazione
+
+- L'app lavora **sempre sulla copia locale**: resta usabile offline.
+- Sincronizza in questi momenti:
+  - all'apertura;
+  - 3 secondi dopo ogni modifica;
+  - al ritorno della connessione;
+  - quando torna in primo piano;
+  - ogni 5 minuti.
+- Il file su Dropbox è `ruolino.json`.
+- Ogni voce (attività, sottoattività, registrazione ore, eccezione, impostazioni) ha un id e un orario di modifica.
+  Le cancellazioni vengono marcate, non eseguite subito.
+- Se il file su Dropbox è cambiato dall'ultima volta (lo si capisce dalla sua *revisione*), l'app lo scarica e **unisce voce per voce**:
+  - si prendono le voci nuove di entrambi i dispositivi;
+  - le ore registrate si sommano;
+  - se **la stessa voce** è stata modificata su due dispositivi prima di sincronizzarsi, vince la modifica più recente.
+    La versione scartata compare in **Impostazioni → Conflitti da controllare**, dove puoi ripristinarla. Niente si perde in silenzio.
+- Il caricamento avviene solo se il file è ancora alla revisione letta.
+  Se nel frattempo un altro dispositivo ha scritto, Dropbox rifiuta e l'app riparte da capo: nessun dispositivo può cancellare le modifiche di un altro.
+- Se il file su Dropbox fosse illeggibile, l'app **non lo sovrascrive** e segnala l'errore: in quel caso ripristina un backup.
+
+---
+
+## Backup e ripristino
+
+**Backup automatici:** una volta al giorno, alla prima sincronizzazione, l'app copia `ruolino.json` in `backup/ruolino-AAAA-MM-GG.json`
+nella cartella dell'app su Dropbox. Conserva gli ultimi **30** e cancella i più vecchi.
+Ogni backup è lo stato del file **all'inizio** di quel giorno.
+
+**Ripristinare un backup dall'app:**
+1. **Impostazioni → Sincronizzazione Dropbox → Backup…**
+2. Scegli la data e clicca **Ripristina**, poi conferma.
+
+Tutti i dati tornano a quello stato **su tutti i dispositivi** alla loro prossima sincronizzazione.
+Le modifiche successive al backup vengono annullate, ma i backup restano tutti disponibili.
+
+**Ripristinare da un file sul computer** (un export o un backup scaricato da dropbox.com):
+**Impostazioni → Dati → Ripristina da file…**. Per aggiungere i dati di un file senza annullare nulla usa invece **Unisci da file…**.
+
+**Se l'app non si apre più su nessun dispositivo:**
+1. su dropbox.com apri `Applicazioni/<nome app>/backup/` e scarica l'ultimo backup buono;
+2. apri l'app (anche in locale con `avvia.cmd`);
+3. usa **Ripristina da file…**.
+
+I file sono JSON leggibili, apribili anche con un editor di testo.
+
+**Esportare:** **Impostazioni → Esporta JSON** scarica una copia completa dei dati.
+
+---
+
+## Pubblicare una nuova versione
+
+1. Modifica il codice e verifica i test (vedi sotto).
+2. Aumenta la versione **in due punti**:
+   - `VERSIONE` in `sw.js`;
+   - `VERSIONE_APP` in `js/versione.js`.
+
+   Devono coincidere: lo verifica il test automatico. Senza questo passaggio i dispositivi continuerebbero a usare la versione in cache.
+3. `git commit` e `git push`. Dopo un minuto, su ogni dispositivo compare **"È disponibile una nuova versione → Aggiorna"**.
+
+Se aggiungi un nuovo file JavaScript, aggiungilo anche all'elenco `FILE` in `sw.js`. Il test lo segnala se te ne dimentichi.
+
+---
+
+## Test automatici
+
+- **Nel browser:** con l'app avviata in locale apri <http://localhost:8000/tests/>.
+  Deve comparire `RISULTATO: N passati, 0 falliti`.
+- **Su GitHub:** a ogni push la scheda **Actions** esegue `node tests/run-node.mjs`.
+  Fa gli stessi test più i controlli del service worker.
+
+I test coprono:
+- lo scheduler: interruzioni, predecessori, limiti giornalieri, giorni non lavorativi, eccezioni;
+- l'unione dei dati e la sincronizzazione tra due dispositivi simulati: modifiche concorrenti, corse tra upload, backup, file corrotto, ripristino.
+
+---
 
 ## Struttura del progetto
 
 ```
-index.html            pagina dell'app
-avvia.cmd             avvio locale con doppio clic
-css/app.css           stile (tema chiaro/scuro automatico, responsive)
-js/app.js             avvio, navigazione, calcolo del piano
-js/store.js           salvataggio locale (IndexedDB) e stato
-js/core/              logica pura, senza interfaccia, coperta dai test
-  model.js            modello dati e operazioni
-  scheduler.js        simulazione della coda
-  order.js            chiavi di ordinamento frazionarie
-  dates.js, ids.js    date ISO, id univoci, orologio monotono
-js/ui/                viste (Preact + htm)
-js/vendor/            librerie incluse nel progetto (Preact+htm, SortableJS)
-tests/                test automatici (browser e Node)
+index.html, manifest.webmanifest, sw.js   pagina, manifest PWA, service worker (offline)
+avvia.cmd                                  avvio locale con doppio clic
+css/app.css                                stile (tema chiaro/scuro automatico, responsive)
+icons/                                     icone (PNG generate da tools/genera-icone.py)
+js/app.js                                  avvio, navigazione, calcolo del piano
+js/config.js                               App key Dropbox e percorsi
+js/store.js                                copia locale (IndexedDB) e stato
+js/core/                                   logica pura, coperta dai test
+  model.js, scheduler.js, merge.js         modello dati, simulazione coda, unione a tre vie
+  order.js, dates.js, ids.js               ordinamento frazionario, date, id e orologio
+js/sync/                                   sincronizzazione
+  motore.js                                algoritmo (indipendente dal browser, testato)
+  dropbox.js                               API Dropbox e login OAuth PKCE
+  sincronizzazione.js                      quando sincronizzare, stato visibile
+js/ui/                                     viste (Preact + htm)
+js/vendor/                                 Preact+htm 3.1.1, SortableJS 1.15.6 (MIT, inclusi)
+tests/                                     test (browser e Node)
+.github/workflows/test.yml                 test automatici su GitHub
 ```
-
-Librerie usate, entrambe open source con licenza MIT e incluse nel progetto, senza CDN:
-[Preact](https://preactjs.com) + [htm](https://github.com/developit/htm) (standalone 3.1.1) e
-[SortableJS](https://sortablejs.github.io/Sortable/) 1.15.6.

@@ -1,10 +1,14 @@
 // =============================================================================
-// impostazioni.js — Capacità settimanale, eccezioni per data, export/import.
+// impostazioni.js — Sincronizzazione, conflitti, capacità settimanale,
+// eccezioni per data, export/import.
 // =============================================================================
 
 import { html, useState, fmtOre, parseOre } from './util.js';
 import { setWeekly, setException, deleteException, live, getDevice, SCHEMA } from '../core/model.js';
-import { mutate, sostituisciDoc, salvaOra } from '../store.js';
+import { mutate, applicaDoc, salvaOra } from '../store.js';
+import { merge, restoreFrom } from '../core/merge.js';
+import { SezioneSync, SezioneConflitti, conflittiAttivi } from './sync.js';
+import { VERSIONE_APP } from '../versione.js';
 import { addDays, formatBreve, NOMI_GIORNI } from '../core/dates.js';
 import { Ore } from './editor.js';
 
@@ -75,7 +79,13 @@ export function VistaImpostazioni({ ctx }) {
     scarica(`ruolino-${today}.json`, JSON.stringify(doc, null, 2));
   };
 
-  const importa = async (e) => {
+  /**
+   * Import da file JSON, in due modalità:
+   *  - 'unisci': aggiunge/aggiorna record dal file (vince il più recente), non elimina nulla;
+   *  - 'ripristina': riporta i dati esattamente allo stato del file, anche
+   *    sugli altri dispositivi alla prossima sincronizzazione.
+   */
+  const importa = (modo) => async (e) => {
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
@@ -84,9 +94,14 @@ export function VistaImpostazioni({ ctx }) {
       if (!dati || typeof dati.tasks !== 'object') throw new Error('il file non sembra un export di Ruolino');
       if (dati.schema > SCHEMA) throw new Error('il file è stato creato da una versione più recente dell\'app');
       const n = Object.values(dati.tasks).filter((t) => !t.deletedAt).length;
-      if (!confirm(`Il file contiene ${n} attività. Sostituire TUTTI i dati attuali con quelli del file?\n\nSuggerimento: prima esporta i dati attuali come copia di sicurezza.`)) return;
-      await sostituisciDoc(dati);
-      setEsito(`Importate ${n} attività da ${file.name}.`);
+      if (modo === 'unisci') {
+        await applicaDoc(merge(doc, dati, null, { registraConflitti: false }).doc);
+        setEsito(`Uniti i dati di ${file.name} (${n} attività nel file).`);
+      } else {
+        if (!confirm(`Il file contiene ${n} attività. Riportare TUTTI i dati a quelli del file, anche sugli altri dispositivi?\n\nSuggerimento: prima esporta i dati attuali come copia di sicurezza.`)) return;
+        await applicaDoc(restoreFrom(doc, dati));
+        setEsito(`Ripristinati i dati di ${file.name} (${n} attività).`);
+      }
     } catch (err) {
       setEsito('Import non riuscito: ' + err.message);
     }
@@ -97,6 +112,13 @@ export function VistaImpostazioni({ ctx }) {
 
   return html`
     <section class="vista impostazioni">
+      <h2 id="sincronizzazione">Sincronizzazione Dropbox</h2>
+      <${SezioneSync} />
+
+      ${conflittiAttivi(doc).length ? html`
+        <h2 id="conflitti">Conflitti da controllare</h2>
+        <${SezioneConflitti} ctx=${ctx} />` : null}
+
       <h2>Capacità settimanale</h2>
       <p class="muto">Ore che puoi dedicare alle attività della coda in ciascun giorno. Totale: <b>${fmtOre(settimana)}</b> a settimana.</p>
       <div class="settimana">
@@ -111,15 +133,16 @@ export function VistaImpostazioni({ ctx }) {
       <${Eccezioni} doc=${doc} today=${today} />
 
       <h2>Dati</h2>
-      <p class="muto">I dati sono salvati in questo browser (${nAtt} attività, ${nLog} registrazioni ore).
-        Finché non è attiva la sincronizzazione con Dropbox (fase 2), esporta spesso una copia.</p>
+      <p class="muto">Copia locale su questo dispositivo: ${nAtt} attività, ${nLog} registrazioni ore. <b>Unisci</b> aggiunge i dati di un file a quelli attuali; <b>Ripristina</b> riporta tutto allo stato del file
+        (anche sugli altri dispositivi, alla prossima sincronizzazione).</p>
       <div class="azioni sinistra">
         <button class="pri" onClick=${esporta}>Esporta JSON</button>
-        <label class="bottone sec">Importa JSON<input type="file" accept=".json,application/json" hidden onChange=${importa} /></label>
+        <label class="bottone sec">Unisci da file…<input type="file" accept=".json,application/json" hidden onChange=${importa('unisci')} /></label>
+        <label class="bottone sec">Ripristina da file…<input type="file" accept=".json,application/json" hidden onChange=${importa('ripristina')} /></label>
       </div>
       ${esito ? html`<p class="messaggio">${esito}</p>` : null}
 
       <h2>Informazioni</h2>
-      <p class="muto">Ruolino · fase 1 (solo locale) · dispositivo <code>${getDevice()}</code></p>
+      <p class="muto">Ruolino · versione ${VERSIONE_APP} · dispositivo <code>${getDevice()}</code></p>
     </section>`;
 }

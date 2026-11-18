@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { html, useState, useRef, fmtOre, parseOre, useSortable, Barra, Slittamento } from './util.js';
-import { macros, children, summary, addTask, moveTask, updateTask, STATI } from '../core/model.js';
+import { macros, children, summary, addTask, moveTask, updateTask, statoEffettivo, STATI } from '../core/model.js';
 import { mutate } from '../store.js';
 import { formatBreve } from '../core/dates.js';
 
@@ -70,9 +70,10 @@ function RigaMacro({ m, ctx, indice }) {
   const r = plan.tasks[m.id];
   const f = finePrevista(r);
   const figli = children(doc, m.id);
+  const stato = statoEffettivo(doc, m, wm);
 
   return html`
-    <li data-id=${m.id} class="riga ${r && r.late ? 'in-ritardo' : ''} stato-${m.status}">
+    <li data-id=${m.id} class="riga ${r && r.late ? 'in-ritardo' : ''} stato-${stato}">
       <div class="riga-princ">
         <span class="maniglia" title="Trascina per riordinare" aria-label="Trascina">⠿</span>
         <span class="pos">${indice + 1}</span>
@@ -80,7 +81,7 @@ function RigaMacro({ m, ctx, indice }) {
           <div class="titolo">
             ${m.title}
             ${m.category ? html`<span class="chip cat">${m.category}</span>` : null}
-            ${m.status === 'doing' ? html`<span class="chip stato-doing">In corso</span>` : null}
+            ${stato === 'doing' ? html`<span class="chip stato-doing">In corso</span>` : null}
             ${m.maxPerDay ? html`<span class="chip" title="Limite ore al giorno">max ${fmtOre(m.maxPerDay)}/g</span>` : null}
           </div>
           <div class="dettagli">
@@ -175,7 +176,7 @@ export function VistaCoda({ ctx }) {
                   <span class="titolo" onClick=${() => ctx.apriEditor(m.id)}>✓ ${m.title}</span>
                   <span class="ore">${fmtOre(s.worked)} su ${fmtOre(s.estimateOriginal)} stimate</span>
                   <span class="data">${m.completedAt ? formatBreve(m.completedAt) : ''}</span>
-                  <button class="link" onClick=${() => mutate((d) => updateTask(d, m.id, { status: 'doing' }))}>Riapri</button>
+                  <button class="link" onClick=${() => mutate((d) => updateTask(d, m.id, { status: 'todo' }))}>Riapri</button>
                 </li>`;
               })}
             </ul>` : null}

@@ -3,13 +3,18 @@
 //
 // L'app lavora SEMPRE sulla copia locale: il documento viene caricato da
 // IndexedDB all'avvio e risalvato (con un breve ritardo) dopo ogni modifica.
-// Nella fase 2 la sincronizzazione con Dropbox si appoggerà a questo modulo.
+// La sincronizzazione con Dropbox (js/sync/) si appoggia a questo modulo.
 //
 // Contenuto del database 'ruolino', archivio 'kv' (chiave → valore):
-//   'doc'        il documento dati completo
-//   'deviceId'   identificativo di questo dispositivo (non sincronizzato)
-//   'snapshots'  date di fine previste salvate giorno per giorno, per mostrare
-//                lo slittamento rispetto al giorno precedente (solo locale)
+//   'doc'           il documento dati completo
+//   'deviceId'      identificativo di questo dispositivo (non sincronizzato)
+//   'snapshots'     date di fine previste salvate giorno per giorno, per
+//                   mostrare lo slittamento rispetto a ieri (solo locale)
+//   'syncBase'      documento all'ultima sincronizzazione riuscita (base
+//                   dell'unione a tre vie)
+//   'syncMeta'      { rev, dirty, lastSync, lastBackup } della sincronizzazione
+//   'dropboxToken'  token OAuth di Dropbox; 'dropboxPkce' login in corso
+//   'appKey'        App key Dropbox inserita a mano (se non c'è in config.js)
 // =============================================================================
 
 import { createEmptyDoc, normalizeDoc, setDevice } from './core/model.js';
@@ -68,6 +73,20 @@ export function subscribe(fn) {
   ascoltatori.add(fn);
   return () => ascoltatori.delete(fn);
 }
+
+// Chi vuole sapere delle modifiche fatte dall'UTENTE (non quelle che arrivano
+// dalla sincronizzazione): usato dal motore di sincronizzazione.
+const ascoltatoriModifiche = new Set();
+export function onMutate(fn) {
+  ascoltatoriModifiche.add(fn);
+  return () => ascoltatoriModifiche.delete(fn);
+}
+
+/** Archivio chiave-valore persistente, usato anche dalla sincronizzazione. */
+export const archivio = {
+  leggi: (k) => leggi(k),
+  scrivi: (k, v) => scrivi(k, v),
+};
 function notifica() {
   state.version++;
   for (const fn of ascoltatori) fn(state.version);
@@ -95,6 +114,7 @@ function osservaTimestamp(doc) {
     for (const r of Object.values(doc[k])) observe(r.updatedAt);
   }
   observe(doc.settings.updatedAt);
+  for (const r of Object.values(doc.conflicts || {})) observe(r.updatedAt);
 }
 
 let timerSalvataggio = null;
@@ -108,6 +128,7 @@ export function mutate(fn) {
   notifica();
   clearTimeout(timerSalvataggio);
   timerSalvataggio = setTimeout(salvaOra, 300);
+  for (const f of ascoltatoriModifiche) f();
   return risultato;
 }
 
@@ -124,11 +145,16 @@ export async function salvaOra() {
   }
 }
 
-/** Sostituisce l'intero documento (import da file). */
-export function sostituisciDoc(nuovo) {
+/**
+ * Sostituisce l'intero documento.
+ * - dalla sincronizzazione (daSync = true): risultato dell'unione con Dropbox;
+ * - dall'utente (import, ripristino backup): conta come modifica da caricare.
+ */
+export function applicaDoc(nuovo, { daSync = false } = {}) {
   state.doc = normalizeDoc(nuovo);
   osservaTimestamp(state.doc);
   notifica();
+  if (!daSync) for (const f of ascoltatoriModifiche) f();
   return salvaOra();
 }
 

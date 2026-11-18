@@ -9,7 +9,7 @@
 //   doc.exceptions  eccezioni di capacità per singola data (id = 'exc-AAAA-MM-GG')
 //   doc.days        conferme "giorno senza lavoro" (id = 'day-AAAA-MM-GG')
 //   doc.settings    impostazioni (record unico, id = 'settings')
-//   doc.conflicts   versioni scartate durante l'unione (fase 2)
+//   doc.conflicts   versioni scartate durante l'unione (vedi merge.js)
 //
 // Regole fondamentali, necessarie per la sincronizzazione tra dispositivi:
 //  - ogni record ha `id`, `updatedAt` (ms, orologio monotono) e `dev` (dispositivo);
@@ -73,10 +73,13 @@ export function createEmptyDoc() {
       // Fattore di correzione delle stime (fase 3): 1 = nessuna correzione.
       applyCorrection: false,
       createdAt: t,
-      updatedAt: t,
+      // updatedAt = 0: impostazioni "mai toccate". Così, alla prima
+      // sincronizzazione di un dispositivo nuovo, vincono quelle già su Dropbox.
+      updatedAt: 0,
       dev: deviceId,
     },
-    conflicts: [],
+    // Versioni scartate durante l'unione (id → record conflitto), vedi merge.js.
+    conflicts: {},
   };
 }
 
@@ -91,7 +94,14 @@ export function normalizeDoc(doc) {
   if (!Array.isArray(d.settings.weekly) || d.settings.weekly.length !== 7) {
     d.settings.weekly = base.settings.weekly;
   }
-  if (!Array.isArray(d.conflicts)) d.conflicts = [];
+  // Nella prima versione i conflitti erano un array: ora sono una mappa per id.
+  if (Array.isArray(d.conflicts)) {
+    const m = {};
+    for (const c of d.conflicts) if (c && c.id) m[c.id] = c;
+    d.conflicts = m;
+  } else if (!d.conflicts || typeof d.conflicts !== 'object') {
+    d.conflicts = {};
+  }
   return d;
 }
 
@@ -272,16 +282,24 @@ export function setRemaining(doc, id, remaining) {
 export function addLog(doc, { taskId, date, hours, note = '' }) {
   const h = q(hours);
   if (!(h > 0) || !doc.tasks[taskId]) return null;
+  // Nota: registrare ore NON modifica l'attività (lo stato "in corso" è
+  // calcolato, vedi statoEffettivo): così le registrazioni fatte su un
+  // dispositivo non entrano in conflitto con le modifiche all'attività fatte
+  // su un altro.
   const l = touch({ id: newId(), taskId, date, hours: h, note, createdAt: Date.now(), deletedAt: null });
   doc.logs[l.id] = l;
-  // Chi riceve ore passa automaticamente da "da fare" a "in corso".
-  const t = doc.tasks[taskId];
-  if (t.status === 'todo') updateTask(doc, taskId, { status: 'doing' });
-  if (t.parentId) {
-    const m = doc.tasks[t.parentId];
-    if (m && m.status === 'todo') updateTask(doc, m.id, { status: 'doing' });
-  }
   return l;
+}
+
+/**
+ * Stato mostrato: un'attività "da fare" con ore registrate (anche sulle
+ * sottoattività) risulta "in corso".
+ */
+export function statoEffettivo(doc, t, wm = workedMap(doc)) {
+  if (t.status !== 'todo') return t.status;
+  if (wm[t.id]) return 'doing';
+  if (!t.parentId && children(doc, t.id).some((c) => wm[c.id])) return 'doing';
+  return 'todo';
 }
 
 /** Modifica le ore di una registrazione esistente. */
