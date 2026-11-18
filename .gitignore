@@ -1,0 +1,4 @@
+# Export e backup dei dati personali: non vanno nel repository pubblico
+ruolino-*.json
+*.local.*
+.claude/settings.local.json

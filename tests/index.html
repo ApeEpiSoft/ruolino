@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ruolino – Test</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; margin: 1.5rem; }
+    .ok { color: #2e7d4f; } .ko { color: #c62828; font-weight: 600; }
+    li { margin: 0.15rem 0; } .err { color: #c62828; margin-left: 1.5rem; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>Test automatici di Ruolino</h1>
+  <p id="sommario">Esecuzione in corso…</p>
+  <ul id="risultati"></ul>
+  <script type="module">
+    // Elenco dei file di test: aggiungere qui i nuovi file.
+    import './model.test.js';
+    import './scheduler.test.js';
+    import { run } from './runner.js';
+
+    const r = await run();
+    const ul = document.getElementById('risultati');
+    for (const t of r.risultati) {
+      const li = document.createElement('li');
+      li.className = t.ok ? 'ok' : 'ko';
+      li.textContent = (t.ok ? '✔ ' : '✘ ') + t.nome;
+      if (!t.ok) {
+        const e = document.createElement('div');
+        e.className = 'err';
+        e.textContent = t.errore;
+        li.appendChild(e);
+      }
+      ul.appendChild(li);
+    }
+    const s = document.getElementById('sommario');
+    s.className = r.falliti ? 'ko' : 'ok';
+    s.textContent = `RISULTATO: ${r.passati} passati, ${r.falliti} falliti`;
+  </script>
+</body>
+</html>
