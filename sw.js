@@ -11,7 +11,7 @@
 // l'app mostra "Nuova versione disponibile" e, alla conferma, si ricarica.
 // =============================================================================
 
-const VERSIONE = '2.0.2';
+const VERSIONE = '3.0.0';
 const CACHE = 'ruolino-' + VERSIONE;
 
 const FILE = [
@@ -27,20 +27,25 @@ const FILE = [
   'js/config.js',
   'js/store.js',
   'js/versione.js',
+  'js/core/csv.js',
   'js/core/dates.js',
   'js/core/ids.js',
+  'js/core/impatto.js',
   'js/core/merge.js',
   'js/core/model.js',
   'js/core/order.js',
   'js/core/scheduler.js',
+  'js/core/stats.js',
   'js/sync/dropbox.js',
   'js/sync/errori.js',
   'js/sync/motore.js',
   'js/sync/sincronizzazione.js',
+  'js/ui/archivio.js',
   'js/ui/coda.js',
   'js/ui/editor.js',
   'js/ui/impostazioni.js',
   'js/ui/oggi.js',
+  'js/ui/piano.js',
   'js/ui/registro.js',
   'js/ui/sync.js',
   'js/ui/util.js',

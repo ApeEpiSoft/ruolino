@@ -38,6 +38,8 @@ const aOre = (qq) => qq / QUARTI;
  * @param {object} opzioni  { horizonDays = 730, factor = 1 }
  *                          factor: moltiplicatore delle ore rimanenti
  *                          (fattore di correzione personale delle stime).
+ *                          Può essere un numero oppure una funzione
+ *                          macro → numero (fattore per categoria, vedi stats.js).
  * @returns {{ today, horizonEnd, tasks: Object<string, RisultatoAttività>, days: Object<string, Array> }}
  *
  * RisultatoAttività = { start, end, plannedHours, days: {data: ore},
@@ -46,7 +48,10 @@ const aOre = (qq) => qq / QUARTI;
  */
 export function schedule(doc, today, opzioni = {}) {
   const horizonDays = opzioni.horizonDays ?? 730;
-  const factor = opzioni.factor && opzioni.factor > 0 ? opzioni.factor : 1;
+  const fattoreDi = (m) => {
+    const f = typeof opzioni.factor === 'function' ? opzioni.factor(m) : opzioni.factor;
+    return f > 0 && isFinite(f) ? f : 1;
+  };
   const wm = workedMap(doc);
   const risultati = {};
   const giorni = {};
@@ -57,7 +62,7 @@ export function schedule(doc, today, opzioni = {}) {
   });
 
   // Quarti rimanenti di un singolo record (con eventuale fattore di correzione).
-  const rimanenti = (t) => {
+  const rimanenti = (t, factor) => {
     const r = Math.max(0, Number(t.estimate || 0) - (wm[t.id] || 0));
     return Math.ceil(r * factor * QUARTI - 1e-9);
   };
@@ -78,14 +83,15 @@ export function schedule(doc, today, opzioni = {}) {
     if (m.status === 'done') { r.state = 'done'; continue; }
 
     // Unità: sottoattività attive in ordine, poi le ore proprie della macro.
+    const f = fattoreDi(m);
     const unità = [];
     for (const c of figli) {
       if (c.status === 'done' || c.status === 'paused') continue;
-      const qq = rimanenti(c);
+      const qq = rimanenti(c, f);
       if (qq > 0) unità.push({ id: c.id, rem: qq });
       else risultati[c.id].exhausted = true; // stima esaurita ma non completata
     }
-    const propri = rimanenti(m);
+    const propri = rimanenti(m, f);
     if (propri > 0) unità.push({ id: m.id, rem: propri });
     else if (figli.length === 0) r.exhausted = true;
 

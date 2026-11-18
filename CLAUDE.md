@@ -10,7 +10,9 @@ Usa l'app da un portatile aziendale, spesso offline e senza permesso di installa
 - Si procede **una fase alla volta**. L'utente prova la fase prima di passare alla successiva.
   - Fase 1 (fatta): MVP locale.
   - Fase 2 (fatta): sincronizzazione Dropbox, PWA offline, guida per GitHub Pages, CI.
-  - Fase 3: Gantt, anteprima dell'impatto di un'urgenza, statistiche stime e fattore di correzione (`settings.applyCorrection`, opzione `factor` dello scheduler), archivio con ricerca, export CSV.
+  - Fase 3 (fatta): Gantt (vista Piano), anteprima dell'impatto di un'urgenza, statistiche stime e fattore di correzione, archivio con ricerca, export CSV.
+- App pubblicata su https://apeepisoft.github.io/ruolino/ (repo `ApeEpiSoft/ruolino`, Pages dal branch `main`).
+  La App key Dropbox è in `js/config.js`. Ogni push su `main` ripubblica.
 - Interfaccia, commenti nel codice e documentazione **in italiano**.
 - **Niente build e niente npm.** Solo moduli ES nativi; le librerie stanno in `js/vendor/`.
   Sul PC c'è Python (serve `python -m http.server`), non c'è Node.
@@ -28,7 +30,7 @@ Il modello è una coda di lavoro con capacità giornaliera:
   - Ore lavorate = somma delle registrazioni in `doc.logs`: **non c'è un contatore**.
   - Rimanenti = `max(0, estimate − lavorate)`; vale 0 se `done`.
   - Correggere il residuo significa `estimate = lavorate + nuovoResiduo` (`setRemaining`).
-  - `estimateOriginal` non cambia: serve alle statistiche della fase 3.
+  - `estimateOriginal` non cambia: serve alle statistiche delle stime.
   - Una macro con sottoattività aggrega le loro ore. Il suo `estimate` diventa "ore proprie": lavoro generale non assegnato a una sottoattività.
   - Predecessori e `maxPerDay` esistono solo a livello di macro. Il limite vale per la somma della macro.
   - **"In corso" è calcolato** (`statoEffettivo`: `todo` con ore registrate).
@@ -48,6 +50,13 @@ Il modello è una coda di lavoro con capacità giornaliera:
   Se due chiavi sono uguali, decide l'id. Se le chiavi dei vicini non sono valide, `moveTask` rinumera la lista.
 - **Slittamento**: ogni giorno si salva localmente (in IndexedDB, chiave `snapshots`, non sincronizzata) la mappa macro → fine prevista.
   L'etichetta ±Ng confronta il piano di oggi con l'ultimo piano di un giorno precedente, in giorni lavorativi.
+- **Correzione delle stime** (`js/core/stats.js`): campione = macro completata con stima originale e ore registrate.
+  - Il fattore è effettive/stimate pesato, sulle ultime 20 di ogni gruppo (categoria o tutte), limitato a [0,5; 3]; servono almeno 3 campioni.
+  - Con `settings.applyCorrection` attivo, `opzioniPiano(doc)` passa allo scheduler `factor` come funzione macro → fattore della categoria.
+  - `app.js` mette le opzioni in `ctx.opzioni`: chi ricalcola un piano (es. anteprima urgenza) deve usarle.
+- **Anteprima urgenza** (`js/core/impatto.js`): `anteprimaUrgenza` simula con un'attività fittizia in cima su una copia superficiale del doc, senza modificarlo.
+- **Gantt** (`ui/piano.js`): solo visualizzazione di `plan.tasks[id].days`; nessuna modifica dal diagramma.
+- **CSV** (`js/core/csv.js`): separatore `;`, virgola decimale, BOM UTF-8, CRLF; i testi che iniziano con `= + - @` sono neutralizzati.
 - **Promemoria ore**: se l'ultimo giorno lavorativo prima di oggi non ha registrazioni e non è confermato in `doc.days` (`day-AAAA-MM-GG`, `noWork`), compare un banner.
 
 ## Regole sui dati (indispensabili per la sincronizzazione)

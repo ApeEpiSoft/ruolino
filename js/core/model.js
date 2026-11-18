@@ -359,6 +359,12 @@ export function capacityOn(doc, date, weekdayFn) {
   return Number(doc.settings.weekly[weekdayFn(date)] || 0);
 }
 
+/** Attiva o disattiva la correzione delle stime nelle previsioni (vedi stats.js). */
+export function setApplyCorrection(doc, attiva) {
+  doc.settings.applyCorrection = !!attiva;
+  touch(doc.settings);
+}
+
 /** Conferma che in una data non si è lavorato (per il promemoria ore mancanti). */
 export function confirmNoWork(doc, date) {
   const id = 'day-' + date;

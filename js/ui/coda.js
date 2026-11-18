@@ -3,10 +3,11 @@
 // data di fine prevista accanto a ciascuna.
 // =============================================================================
 
-import { html, useState, useRef, fmtOre, parseOre, useSortable, Barra, Slittamento } from './util.js';
-import { macros, children, summary, addTask, moveTask, updateTask, statoEffettivo, STATI } from '../core/model.js';
+import { html, useState, useRef, useMemo, fmtOre, parseOre, useSortable, Barra, Slittamento } from './util.js';
+import { macros, children, summary, addTask, moveTask, statoEffettivo, STATI } from '../core/model.js';
 import { mutate } from '../store.js';
 import { formatBreve } from '../core/dates.js';
+import { anteprimaUrgenza } from '../core/impatto.js';
 
 /** Testo e classe per la colonna "fine prevista" di un risultato dello scheduler. */
 export function finePrevista(r) {
@@ -24,8 +25,45 @@ export function finePrevista(r) {
   }
 }
 
+/**
+ * Anteprima dell'urgenza: quando finirebbe e cosa sposterebbe nella coda.
+ * Ricalcolata a ogni tasto (la simulazione costa pochi millisecondi).
+ */
+function AnteprimaUrgenza({ ctx, titolo, ore, scad }) {
+  const { doc, today, plan, opzioni } = ctx;
+  const h = parseOre(ore);
+  const a = useMemo(
+    () => (h > 0 ? anteprimaUrgenza(doc, today, { title: titolo, estimate: h, deadline: scad || null }, opzioni, plan) : null),
+    [h, scad, plan, titolo],
+  );
+  if (!a) return html`<div class="anteprima muto">Scrivi le ore stimate per vedere l'effetto sulla coda.</div>`;
+  const n = a.nuova;
+  const MAX = 6;
+  return html`
+    <div class="anteprima">
+      <div>
+        ${n.end
+          ? html`Finirebbe <b class=${n.late ? 'tardi' : ''}>${formatBreve(n.end)}</b>${n.late ? html` <span class="tardi">· oltre la scadenza</span>` : null}`
+          : html`<span class="avviso">Oltre l'orizzonte di pianificazione</span>`}
+      </div>
+      ${a.spostate.length === 0 ? html`<div class="ok">Nessun'altra attività cambia data.</div>` : html`
+        <div>
+          ${a.spostate.length === 1 ? 'Slitta 1 attività' : `Slittano ${a.spostate.length} attività`}${a.nuoveInRitardo
+            ? html`, <b class="tardi">${a.nuoveInRitardo} ${a.nuoveInRitardo === 1 ? 'supera' : 'superano'} la scadenza</b>` : null}:
+        </div>
+        <ul class="spostate">
+          ${a.spostate.slice(0, MAX).map((s) => html`<li key=${s.id} class=${s.nuovoRitardo ? 'tardi' : ''}>
+            <span class="titolo">${s.titolo}</span>
+            <span class="date">${s.prima ? formatBreve(s.prima) : '—'} → <b>${s.dopo ? formatBreve(s.dopo) : 'oltre l\'orizzonte'}</b>
+              ${s.giorni ? html` <span class="slitta peggio">+${s.giorni}g</span>` : null}${s.nuovoRitardo ? ' ⚠' : ''}</span>
+          </li>`)}
+          ${a.spostate.length > MAX ? html`<li class="muto">… e altre ${a.spostate.length - MAX}</li>` : null}
+        </ul>`}
+    </div>`;
+}
+
 /** Modulo di inserimento rapido: titolo + ore + scadenza. */
-function InserimentoRapido({ posizione, onChiudi }) {
+function InserimentoRapido({ posizione, onChiudi, ctx }) {
   const [titolo, setTitolo] = useState('');
   const [ore, setOre] = useState('');
   const [scad, setScad] = useState('');
@@ -55,6 +93,7 @@ function InserimentoRapido({ posizione, onChiudi }) {
           onInput=${(e) => setOre(e.target.value)} /></label>
         <label>Scadenza<input type="date" value=${scad} onInput=${(e) => setScad(e.target.value)} /></label>
       </div>
+      ${urgenza ? html`<${AnteprimaUrgenza} ctx=${ctx} titolo=${titolo} ore=${ore} scad=${scad} />` : null}
       <div class="azioni">
         <button type="button" class="sec" onClick=${onChiudi}>Chiudi</button>
         <button type="submit" class="pri">Aggiungi</button>
@@ -121,12 +160,10 @@ function RigaMacro({ m, ctx, indice }) {
 export function VistaCoda({ ctx }) {
   const { doc, plan, wm } = ctx;
   const [modulo, setModulo] = useState(null); // null | 'top' | 'bottom'
-  const [mostraFatte, setMostraFatte] = useState(false);
 
   const tutte = macros(doc);
   const attive = tutte.filter((m) => m.status !== 'done');
-  const fatte = tutte.filter((m) => m.status === 'done')
-    .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+  const nFatte = tutte.length - attive.length;
 
   const refLista = useSortable((id, primaId, dopoId) => mutate((d) => moveTask(d, id, primaId, dopoId)));
 
@@ -145,7 +182,7 @@ export function VistaCoda({ ctx }) {
         <button class="pri" onClick=${() => setModulo(modulo === 'bottom' ? null : 'bottom')}>+ Attività</button>
         <button class="urg" onClick=${() => setModulo(modulo === 'top' ? null : 'top')}>⚡ Urgenza</button>
       </div>
-      ${modulo ? html`<${InserimentoRapido} key=${modulo} posizione=${modulo} onChiudi=${() => setModulo(null)} />` : null}
+      ${modulo ? html`<${InserimentoRapido} key=${modulo} posizione=${modulo} ctx=${ctx} onChiudi=${() => setModulo(null)} />` : null}
 
       ${attive.length ? html`
         <div class="riepilogo">
@@ -153,6 +190,8 @@ export function VistaCoda({ ctx }) {
           <span><b>${fmtOre(restanti)}</b> di lavoro rimanente</span>
           ${ultima ? html`<span>coda finita il <b>${formatBreve(ultima)}</b></span>` : null}
           ${inRitardo ? html`<span class="tardi"><b>${inRitardo}</b> oltre la scadenza</span>` : null}
+          ${ctx.opzioni.factor ? html`<button class="link piccolo" onClick=${() => ctx.vai('archivio')}
+            title="Le date tengono conto di quanto, in passato, le attività hanno richiesto più o meno ore del previsto">date corrette con le statistiche</button>` : null}
         </div>` : html`
         <div class="vuoto-grande">
           <p>La coda è vuota.</p>
@@ -163,23 +202,9 @@ export function VistaCoda({ ctx }) {
         ${attive.map((m, i) => html`<${RigaMacro} key=${m.id} m=${m} ctx=${ctx} indice=${i} />`)}
       </ul>
 
-      ${fatte.length ? html`
+      ${nFatte ? html`
         <div class="sezione-fatte">
-          <button class="link" onClick=${() => setMostraFatte(!mostraFatte)}>
-            ${mostraFatte ? '▾' : '▸'} Completate (${fatte.length})
-          </button>
-          ${mostraFatte ? html`
-            <ul class="fatte">
-              ${fatte.slice(0, 50).map((m) => {
-                const s = summary(doc, m.id, wm);
-                return html`<li key=${m.id}>
-                  <span class="titolo" onClick=${() => ctx.apriEditor(m.id)}>✓ ${m.title}</span>
-                  <span class="ore">${fmtOre(s.worked)} su ${fmtOre(s.estimateOriginal)} stimate</span>
-                  <span class="data">${m.completedAt ? formatBreve(m.completedAt) : ''}</span>
-                  <button class="link" onClick=${() => mutate((d) => updateTask(d, m.id, { status: 'todo' }))}>Riapri</button>
-                </li>`;
-              })}
-            </ul>` : null}
+          <button class="link" onClick=${() => ctx.vai('archivio')}>✓ ${nFatte} ${nFatte === 1 ? 'attività completata' : 'attività completate'} → Archivio</button>
         </div>` : null}
     </section>`;
 }

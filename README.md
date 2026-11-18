@@ -30,9 +30,18 @@ Il simulatore riempie i giorni futuri seguendo le priorità e calcola inizio e f
 | Vista | A cosa serve |
 |---|---|
 | **Oggi** | Cosa fare oggi secondo il piano; ✓ per registrare subito le ore; avvisi (ritardi, blocchi, stime esaurite); prossimi giorni |
-| **Coda** | Le attività in ordine di priorità. Si riordinano trascinando la maniglia ⠿ (anche col dito). Accanto a ogni voce c'è la fine prevista, in rosso se supera la scadenza. **⚡ Urgenza** inserisce in cima. L'etichetta **+1g / −1g** è lo slittamento rispetto al piano di ieri |
+| **Coda** | Le attività in ordine di priorità. Si riordinano trascinando la maniglia ⠿ (anche col dito). Accanto a ogni voce c'è la fine prevista, in rosso se supera la scadenza. **⚡ Urgenza** inserisce in cima e, mentre scrivi le ore, mostra quando finirebbe e quali attività slitterebbero (e se superano la scadenza). L'etichetta **+1g / −1g** è lo slittamento rispetto al piano di ieri |
+| **Piano** | Diagramma di Gantt calcolato dalla simulazione: per ogni giorno, un blocco alto quanto le ore pianificate rispetto alla capacità. Linea rossa = scadenza, colonne grigie = giorni non lavorativi. Scala a giorni o a settimane, sottoattività facoltative. Non si modifica trascinando: si cambia la coda |
 | **Registro** | A fine giornata: ore lavorate su una o più attività (`2,5` o `1:30`, oppure +½ +1 +2), correzione delle ore residue, spunta "finita" |
-| **Impostazioni** | Sincronizzazione Dropbox e backup, conflitti da controllare, ore per giorno della settimana, eccezioni per data o periodo (ferie, trasferte), export/import |
+| **Archivio** | Attività completate con ricerca (titoli, note, sottoattività, note delle ore), filtri per categoria e anno, scarto tra ore effettive e stimate. In testa la **precisione delle stime** con il fattore di correzione (vedi sotto) |
+| **Impostazioni** | Sincronizzazione Dropbox e backup, conflitti da controllare, ore per giorno della settimana, eccezioni per data o periodo (ferie, trasferte), export/import JSON, **CSV per Excel** (attività e ore registrate) |
+
+**Correzione delle stime.** L'archivio confronta le ore effettive di ogni attività completata con la sua stima *originale*
+(quella data all'inizio, che non cambia quando correggi il residuo). Il fattore è il rapporto tra ore effettive e stimate,
+per categoria e in generale, sulle ultime 20 attività di ciascun gruppo. Spuntando *Applica la correzione alle date previste*
+le ore rimanenti di ogni attività vengono moltiplicate per il fattore della sua categoria. Una categoria con meno di 3 attività
+completate usa il fattore generale; con meno di 3 in tutto non si corregge nulla. Il fattore è limitato tra ×0,5 e ×3.
+Le stime mostrate restano quelle scritte da te: cambiano solo le date.
 
 Clic su un'attività: si apre la scheda di dettaglio. Lì ci sono stato, categoria, scadenza, limite ore/giorno,
 stime, sottoattività (riordinabili), predecessori, note e ore registrate. Le modifiche si salvano da sole.
@@ -236,6 +245,7 @@ js/store.js                                copia locale (IndexedDB) e stato
 js/core/                                   logica pura, coperta dai test
   model.js, scheduler.js, merge.js         modello dati, simulazione coda, unione a tre vie
   order.js, dates.js, ids.js               ordinamento frazionario, date, id e orologio
+  stats.js, impatto.js, csv.js             statistiche stime, anteprima urgenze, export CSV
 js/sync/                                   sincronizzazione
   motore.js                                algoritmo (indipendente dal browser, testato)
   dropbox.js                               API Dropbox e login OAuth PKCE

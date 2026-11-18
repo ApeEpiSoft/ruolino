@@ -11,6 +11,7 @@ import { SezioneSync, SezioneConflitti, conflittiAttivi } from './sync.js';
 import { VERSIONE_APP } from '../versione.js';
 import { addDays, formatBreve, NOMI_GIORNI } from '../core/dates.js';
 import { Ore } from './editor.js';
+import { csvAttivita, csvOre } from '../core/csv.js';
 
 const ORDINE_GIORNI = [1, 2, 3, 4, 5, 6, 0]; // lunedì … domenica
 
@@ -139,6 +140,11 @@ export function VistaImpostazioni({ ctx }) {
         <button class="pri" onClick=${esporta}>Esporta JSON</button>
         <label class="bottone sec">Unisci da file…<input type="file" accept=".json,application/json" hidden onChange=${importa('unisci')} /></label>
         <label class="bottone sec">Ripristina da file…<input type="file" accept=".json,application/json" hidden onChange=${importa('ripristina')} /></label>
+      </div>
+      <p class="muto">Per Excel: elenco delle attività con stime, ore e date previste, oppure tutte le ore registrate.</p>
+      <div class="azioni sinistra">
+        <button class="sec" onClick=${() => scarica(`ruolino-attivita-${today}.csv`, csvAttivita(doc, ctx.plan, ctx.wm), 'text/csv;charset=utf-8')}>CSV attività</button>
+        <button class="sec" onClick=${() => scarica(`ruolino-ore-${today}.csv`, csvOre(doc), 'text/csv;charset=utf-8')}>CSV ore registrate</button>
       </div>
       ${esito ? html`<p class="messaggio">${esito}</p>` : null}
 

@@ -15,6 +15,9 @@ import { VistaCoda } from './ui/coda.js';
 import { VistaOggi } from './ui/oggi.js';
 import { VistaRegistro } from './ui/registro.js';
 import { VistaImpostazioni } from './ui/impostazioni.js';
+import { VistaPiano } from './ui/piano.js';
+import { VistaArchivio } from './ui/archivio.js';
+import { opzioniPiano } from './core/stats.js';
 import { Editor } from './ui/editor.js';
 import { IndicatoreSync, conflittiAttivi } from './ui/sync.js';
 import { initSync } from './sync/sincronizzazione.js';
@@ -53,7 +56,9 @@ function registraServiceWorker() {
 const VISTE = [
   { id: 'oggi', nome: 'Oggi', icona: '☀' },
   { id: 'coda', nome: 'Coda', icona: '☰' },
+  { id: 'piano', nome: 'Piano', icona: '▤' },
   { id: 'registro', nome: 'Registro', icona: '⏱' },
+  { id: 'archivio', nome: 'Archivio', icona: '✓' },
   { id: 'impostazioni', nome: 'Impostazioni', icona: '⚙' },
 ];
 
@@ -104,8 +109,10 @@ function App() {
   useEffect(() => { history.replaceState(null, '', '#' + vista); }, [vista]);
 
   const doc = state.doc;
-  const plan = useMemo(() => schedule(doc, today), [versione, today]);
   const wm = useMemo(() => workedMap(doc), [versione]);
+  // Con la correzione delle stime attiva, le opzioni contengono il fattore per categoria.
+  const opzioni = useMemo(() => opzioniPiano(doc, wm), [wm]);
+  const plan = useMemo(() => schedule(doc, today, opzioni), [opzioni, today]);
 
   // Slittamento rispetto a ieri: confronta con l'ultimo piano di un giorno precedente.
   const slitta = useMemo(() => {
@@ -121,7 +128,7 @@ function App() {
     setVista(v);
     window.scrollTo(0, 0);
   };
-  const ctx = { doc, plan, wm, today, slitta, vai, apriEditor: setEditorId };
+  const ctx = { doc, plan, wm, opzioni, today, slitta, vai, apriEditor: setEditorId };
   const mancante = giornoSenzaOre(doc, today);
   const nConflitti = conflittiAttivi(doc).length;
 
@@ -159,7 +166,9 @@ function App() {
         </div>` : null}
       ${vista === 'oggi' ? html`<${VistaOggi} ctx=${ctx} />` : null}
       ${vista === 'coda' ? html`<${VistaCoda} ctx=${ctx} />` : null}
+      ${vista === 'piano' ? html`<${VistaPiano} ctx=${ctx} />` : null}
       ${vista === 'registro' ? html`<${VistaRegistro} ctx=${ctx} dataIniziale=${dataRegistro} />` : null}
+      ${vista === 'archivio' ? html`<${VistaArchivio} ctx=${ctx} />` : null}
       ${vista === 'impostazioni' ? html`<${VistaImpostazioni} ctx=${ctx} />` : null}
     </main>
     ${editorId ? html`<${Editor} id=${editorId} ctx=${ctx} onChiudi=${() => setEditorId(null)} />` : null}`;

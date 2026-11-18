@@ -355,3 +355,104 @@ label.mini input { width: 4.2rem; min-height: 34px; padding: 0.3rem 0.4rem; }
 .eccezioni li { display: flex; gap: 0.8rem; align-items: center; padding: 0.25rem 0; border-bottom: 1px solid var(--bordo); font-size: 0.9rem; }
 .eccezioni .data { width: 7rem; }
 .eccezioni .titolo { flex: 1; color: var(--muto); }
+
+/* ---------- Testata con sei viste: su schermi medi solo i nomi ---------- */
+@media (min-width: 721px) and (max-width: 1100px) {
+  .testata { gap: 0.6rem; }
+  .nav .nav-icona { display: none; }
+  .nav button { padding: 0.5rem 0.6rem; }
+  .indicatore-sync .testo-sync { display: none; }
+}
+@media (max-width: 720px) {
+  .nav button { font-size: 0.66rem; padding: 0.3rem 0; }
+}
+.piccolo { font-size: 0.82rem; }
+
+/* ---------- Anteprima urgenza ---------- */
+.anteprima {
+  background: var(--sfondo); border-radius: 8px; padding: 0.55rem 0.7rem; font-size: 0.9rem;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.spostate { list-style: none; margin: 0.1rem 0 0; padding: 0; font-size: 0.86rem; }
+.spostate li { display: flex; gap: 0.6rem; justify-content: space-between; padding: 0.15rem 0; border-top: 1px solid var(--bordo); }
+.spostate .titolo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.spostate .date { white-space: nowrap; color: var(--muto); }
+.spostate li.tardi .date b { color: var(--tardi); }
+
+/* ---------- Piano (Gantt) ---------- */
+.piano-strumenti { align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.segmenti { display: inline-flex; border: 1px solid var(--bordo); border-radius: 8px; overflow: hidden; }
+.segmenti button { border: none; border-radius: 0; min-height: 34px; padding: 0.3rem 0.8rem; }
+.segmenti button.attivo { background: var(--primario); color: #fff; }
+.legenda i { display: inline-block; width: 0.8rem; height: 0.8rem; vertical-align: -0.1rem; border-radius: 2px; margin-left: 0.4rem; }
+.legenda .l-ore { background: var(--primario); }
+.legenda .l-scad { background: var(--tardi); width: 3px; }
+.legenda .l-libero { background: var(--bordo); }
+
+.gantt {
+  --riga: 36px; --testa: 44px;
+  display: grid; grid-template-columns: 15rem minmax(0, 1fr);
+  background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio); overflow: hidden;
+}
+.g-nomi { border-right: 1px solid var(--bordo); min-width: 0; }
+.g-nomi .g-testa { border-bottom: 1px solid var(--bordo); }
+.g-testa { height: var(--testa); position: relative; }
+.g-nome {
+  height: var(--riga); display: flex; flex-direction: column; justify-content: center; padding: 0 0.6rem;
+  border-bottom: 1px solid var(--bordo); cursor: pointer; min-width: 0;
+}
+.g-nome:hover { background: var(--primario-chiaro); }
+.g-nome.livello-1 { padding-left: 1.5rem; }
+.g-titolo { font-size: 0.86rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-nome.livello-1 .g-titolo { font-weight: normal; }
+.g-fine { font-size: 0.72rem; color: var(--muto); white-space: nowrap; }
+.g-fine.tardi { color: var(--tardi); font-weight: 600; }
+.g-fine.avviso { color: var(--avviso); }
+
+.g-scorri { overflow-x: auto; }
+.g-tela { position: relative; }
+.g-tela .g-testa { border-bottom: 1px solid var(--bordo); }
+.g-mesi span { position: absolute; top: 2px; font-size: 0.72rem; font-weight: 600; color: var(--muto); padding-left: 3px; white-space: nowrap; border-left: 1px solid var(--bordo); }
+.g-giorni span { position: absolute; top: 18px; font-size: 0.66rem; line-height: 1.15; color: var(--muto); text-align: center; white-space: nowrap; }
+.g-giorni span.festivo { opacity: 0.55; }
+.g-libero { position: absolute; top: 0; bottom: 0; width: var(--w); background: var(--sfondo); }
+.g-oggi { position: absolute; top: 0; bottom: 0; width: var(--w); background: var(--primario-chiaro); opacity: 0.6; }
+.g-riga { position: relative; height: var(--riga); border-bottom: 1px solid var(--bordo); cursor: pointer; }
+.g-riga:hover { background: rgba(127, 127, 127, 0.06); }
+.g-banda { position: absolute; top: 7px; height: 22px; background: var(--primario-chiaro); border-radius: 4px; }
+.g-banda.tardi { background: var(--tardi-chiaro); }
+.g-blocco { position: absolute; bottom: 7px; width: calc(var(--w) - 2px); background: var(--primario); border-radius: 2px 2px 0 0; }
+.g-blocco.tardi { background: var(--tardi); }
+.g-riga.livello-1 .g-blocco { opacity: 0.7; }
+.g-scad { position: absolute; top: 3px; bottom: 3px; width: 3px; background: var(--tardi); border-radius: 2px; }
+.g-motivo { position: absolute; left: 0.5rem; top: 0; line-height: var(--riga); font-size: 0.78rem; color: var(--avviso); white-space: nowrap; }
+@media (max-width: 720px) {
+  .gantt { grid-template-columns: 8.5rem minmax(0, 1fr); }
+  .g-nome { padding: 0 0.4rem; }
+  .g-nome.livello-1 { padding-left: 0.9rem; }
+}
+
+/* ---------- Archivio ---------- */
+.tabella-stat { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 0.4rem 0 0.8rem; }
+.tabella-stat th, .tabella-stat td { text-align: right; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--bordo); white-space: nowrap; }
+.tabella-stat th:first-child, .tabella-stat td:first-child { text-align: left; white-space: normal; }
+.tabella-stat th { color: var(--muto); font-weight: 500; }
+.tabella-stat tr.totale td { border-top: 2px solid var(--bordo); font-weight: 600; }
+label.check.correzione { margin: 0.3rem 0; font-weight: 600; }
+.filtri { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+.filtri .cerca { flex: 1 1 16rem; }
+.filtri select { width: auto; flex: 0 1 auto; }
+.scarto { font-size: 0.78rem; font-weight: 600; padding: 0 0.35rem; border-radius: 4px; }
+.scarto.ok { background: var(--ok-chiaro); }
+.scarto.tardi { background: var(--tardi-chiaro); }
+.scarto.avviso { background: var(--avviso-chiaro); }
+.sotto-trovate { display: block; font-size: 0.8rem; color: var(--muto); }
+@media (max-width: 720px) {
+  .tabella-stat th, .tabella-stat td { padding: 0.3rem 0.25rem; }
+}
+@media (max-width: 720px) {
+  .nav button { min-width: 0; font-size: 0.62rem; overflow: hidden; }
+  .nav-nome { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .fatte li { gap: 0.2rem 0.7rem; }
+  .fatte .titolo { flex-basis: 100%; }
+}
