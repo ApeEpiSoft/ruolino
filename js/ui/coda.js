@@ -4,14 +4,20 @@
 // =============================================================================
 
 import { html, useState, useRef, useMemo, fmtOre, parseOre, useSortable, Barra, Slittamento } from './util.js';
-import { macros, children, summary, addTask, moveTask, statoEffettivo, STATI } from '../core/model.js';
+import { macros, children, summary, addTask, moveTask, updateTask, statoEffettivo, STATI } from '../core/model.js';
 import { mutate } from '../store.js';
 import { formatBreve } from '../core/dates.js';
 import { anteprimaUrgenza } from '../core/impatto.js';
 
-/** Testo e classe per la colonna "fine prevista" di un risultato dello scheduler. */
-export function finePrevista(r) {
+/**
+ * Testo e classe per la colonna "fine prevista" di un risultato dello scheduler.
+ * `s` (riepilogo ore, facoltativo) distingue "senza stima" da "stima esaurita".
+ */
+export function finePrevista(r, s = null) {
   if (!r) return { testo: '—', classe: '' };
+  if (s && s.estimate === 0 && s.worked === 0 && r.state === 'planned' && !r.end) {
+    return { testo: 'Senza stima', classe: 'avviso', titolo: 'Inserisci le ore stimate per pianificarla' };
+  }
   switch (r.state) {
     case 'done': return { testo: 'Completata', classe: 'ok' };
     case 'paused': return { testo: 'In pausa', classe: 'muto' };
@@ -70,16 +76,18 @@ function InserimentoRapido({ posizione, onChiudi, ctx }) {
   const refTitolo = useRef(null);
   const urgenza = posizione === 'top';
 
-  const invia = (e) => {
+  /** Aggiunge l'attività; con `apri` chiude il modulo e apre subito la scheda di dettaglio. */
+  const invia = (e, apri = false) => {
     e.preventDefault();
-    if (!titolo.trim()) return;
-    mutate((doc) => addTask(doc, {
+    if (!titolo.trim()) { refTitolo.current && refTitolo.current.focus(); return; }
+    const t = mutate((doc) => addTask(doc, {
       title: titolo,
       estimate: parseOre(ore) || 0,
       deadline: scad || null,
     }, posizione));
     setTitolo(''); setOre(''); setScad('');
-    if (urgenza) onChiudi();
+    if (apri) { onChiudi(); ctx.apriEditor(t.id); }
+    else if (urgenza) onChiudi();
     else refTitolo.current && refTitolo.current.focus();
   };
 
@@ -96,6 +104,8 @@ function InserimentoRapido({ posizione, onChiudi, ctx }) {
       ${urgenza ? html`<${AnteprimaUrgenza} ctx=${ctx} titolo=${titolo} ore=${ore} scad=${scad} />` : null}
       <div class="azioni">
         <button type="button" class="sec" onClick=${onChiudi}>Chiudi</button>
+        <button type="button" class="sec" onClick=${(e) => invia(e, true)}
+          title="Aggiunge l'attività e apre la scheda per categoria, sottoattività, note…">Aggiungi e apri ›</button>
         <button type="submit" class="pri">Aggiungi</button>
       </div>
     </form>`;
@@ -107,7 +117,7 @@ function RigaMacro({ m, ctx, indice }) {
   const [aperta, setAperta] = useState(false);
   const s = summary(doc, m.id, wm);
   const r = plan.tasks[m.id];
-  const f = finePrevista(r);
+  const f = finePrevista(r, s);
   const figli = children(doc, m.id);
   const stato = statoEffettivo(doc, m, wm);
 
@@ -136,6 +146,10 @@ function RigaMacro({ m, ctx, indice }) {
           ${m.deadline ? html`<div class="scad ${r && r.late ? 'tardi' : ''}">scad. ${formatBreve(m.deadline)}</div>` : null}
           ${r && r.start && r.state === 'planned' && r.start !== r.end ? html`<div class="inizio">da ${formatBreve(r.start)}</div>` : null}
         </div>
+        <button class="icona pausa" title=${m.status === 'paused' ? 'Riprendi' : 'Metti in pausa'}
+          aria-label=${m.status === 'paused' ? 'Riprendi' : 'Metti in pausa'}
+          onClick=${() => mutate((d) => updateTask(d, m.id, { status: m.status === 'paused' ? 'todo' : 'paused' }))}
+          >${m.status === 'paused' ? '▶' : '❚❚'}</button>
         ${figli.length ? html`
           <button class="espandi" onClick=${() => setAperta(!aperta)} aria-label="Sottoattività"
             title="${figli.length} sottoattività">${aperta ? '▾' : '▸'} ${figli.length}</button>` : html`<span class="espandi vuoto"></span>`}
@@ -144,7 +158,7 @@ function RigaMacro({ m, ctx, indice }) {
         <ul class="sotto">
           ${figli.map((c) => {
             const sc = summary(doc, c.id, wm);
-            const fc = finePrevista(plan.tasks[c.id]);
+            const fc = finePrevista(plan.tasks[c.id], sc);
             return html`<li key=${c.id} class="stato-${c.status}" onClick=${() => apriEditor(m.id)}>
               <span class="spunta">${c.status === 'done' ? '✓' : c.status === 'paused' ? '❚❚' : '○'}</span>
               <span class="titolo">${c.title}</span>

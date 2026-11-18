@@ -89,8 +89,8 @@ export function VistaPiano({ ctx }) {
           <div class="g-testa"></div>
           ${righe.map(({ t, livello }) => {
             const r = plan.tasks[t.id];
-            const f = finePrevista(r);
             const s = summary(doc, t.id, wm);
+            const f = finePrevista(r, s);
             return html`<div class="g-nome livello-${livello}" key=${t.id} onClick=${() => apriEditor(t.parentId || t.id)}
               title="${t.title} · restano ${fmtOre(s.remaining)}">
               <span class="g-titolo">${t.title}</span>

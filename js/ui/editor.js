@@ -49,7 +49,7 @@ export function Ore({ valore, onSalva, vuotoNull = false, ...altri }) {
 function RigaSotto({ c, ctx }) {
   const { doc, wm, plan } = ctx;
   const s = summary(doc, c.id, wm);
-  const f = finePrevista(plan.tasks[c.id]);
+  const f = finePrevista(plan.tasks[c.id], s);
   const agg = (patch) => mutate((d) => updateTask(d, c.id, patch));
   return html`
     <li data-id=${c.id} class="sotto-riga stato-${c.status}">
@@ -87,7 +87,7 @@ export function Editor({ id, ctx, onChiudi }) {
   const figli = children(doc, id);
   const s = summary(doc, id, wm);
   const r = plan.tasks[id];
-  const f = finePrevista(r);
+  const f = finePrevista(r, s);
   const agg = (patch) => mutate((d) => updateTask(d, id, patch));
   const categorie = [...new Set(live(doc.tasks).map((t) => t.category).filter(Boolean))].sort();
   const candidatiPred = macros(doc).filter((x) => x.id !== id && (x.status !== 'done' || (m.predecessors || []).includes(x.id)));
@@ -204,6 +204,10 @@ export function Editor({ id, ctx, onChiudi }) {
             if (confirm(`Eliminare "${m.title}" e le sue sottoattività?`)) { mutate((d) => deleteTask(d, id)); onChiudi(); }
           }}>Elimina</button>
           <span class="spazio"></span>
+          ${m.status === 'done' ? null : m.status === 'paused'
+            ? html`<button class="sec" onClick=${() => agg({ status: 'todo' })}>▶ Riprendi</button>`
+            : html`<button class="sec" onClick=${() => agg({ status: 'paused' })}
+                title="Esclude l'attività dal piano finché non la riprendi">❚❚ Metti in pausa</button>`}
           ${m.status === 'done'
             ? html`<button class="sec" onClick=${() => agg({ status: 'todo' })}>Riapri</button>`
             : html`<button class="ok" onClick=${() => { agg({ status: 'done' }); onChiudi(); }}>✓ Segna completata</button>`}
