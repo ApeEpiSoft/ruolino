@@ -44,6 +44,10 @@ Il modello è una coda di lavoro con capacità giornaliera:
   - Per ogni giorno scorre le macro in ordine di coda e assegna `min(rimanenti, capacità residua, maxPerDay − già assegnato oggi)`. Ripete il giro finché assegna qualcosa: un predecessore finito a metà giornata sblocca subito chi lo aspetta.
   - Dentro una macro le sottoattività avanzano in sequenza (saltando quelle in pausa o completate). Le ore proprie della macro vengono per ultime.
   - Le macro in pausa, quelle in cicli di predecessori e quelle che ne dipendono restano escluse, con un motivo.
+  - **Date fisse** (`fixedStart`, `fixedEnd` facoltativo, solo macro): ogni giorno vengono assegnate per prime, residuo diviso in parti uguali sui giorni lavorativi dell'intervallo (`giorniFissi`; se nessuno ha capacità, tutti).
+    Ignorano ordine, predecessori, `maxPerDay` e fattore di correzione. Le ore oltre la capacità finiscono in `plan.overload[data]` e `tasks[id].overload`.
+    Intervallo passato con ore residue → `state: 'expired'`, `late: true`.
+  - **Non prima del** (`notBefore`, ignorato se ci sono date fisse): la macro resta in coda ma non riceve ore prima della data.
   - Restituisce `{ tasks: {id: {start, end, days, plannedHours, state, reason, late, exhausted}}, days: {data: [{taskId, macroId, hours}]} }`.
   - Ricalcolo completo a ogni modifica: costa meno di 1 ms.
 - **Ordine della coda**: chiavi frazionarie in `order` (`js/core/order.js`). Spostare un elemento modifica un solo record.

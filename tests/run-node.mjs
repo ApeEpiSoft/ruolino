@@ -12,6 +12,7 @@ import './scheduler.test.js';
 import './merge.test.js';
 import './sync.test.js';
 import './fase3.test.js';
+import './vincoli.test.js';
 import { test, assert, run } from './runner.js';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';

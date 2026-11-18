@@ -129,7 +129,8 @@ const ETICHETTE = {
   maxPerDay: 'Max ore/giorno', deletedAt: 'Eliminata', order: 'Posizione nella coda',
   completedAt: 'Completata il', hours: 'Ore', date: 'Data', note: 'Nota', taskId: 'Attività',
   weekly: 'Ore settimanali', applyCorrection: 'Correzione stime', parentId: 'Macro-attività',
-  noWork: 'Giorno senza lavoro',
+  noWork: 'Giorno senza lavoro', fixedStart: 'Data fissa (dal)', fixedEnd: 'Data fissa (al)',
+  notBefore: 'Non prima del',
 };
 
 function valore(campo, v, doc) {
@@ -138,7 +139,8 @@ function valore(campo, v, doc) {
     case 'deletedAt': return v ? 'sì' : 'no';
     case 'status': return STATI[v] || v;
     case 'estimate': case 'estimateOriginal': case 'maxPerDay': case 'hours': return fmtOre(v);
-    case 'deadline': case 'date': case 'completedAt': return formatBreve(v);
+    case 'deadline': case 'date': case 'completedAt': case 'fixedStart': case 'fixedEnd': case 'notBefore':
+      return formatBreve(v);
     case 'predecessors': return v.map((id) => doc.tasks[id]?.title || '?').join(', ') || '—';
     case 'taskId': case 'parentId': return doc.tasks[v]?.title || '?';
     case 'weekly': return [1, 2, 3, 4, 5, 6, 0].map((g) => NOMI_GIORNI[g].slice(0, 3) + ' ' + v[g]).join(', ');

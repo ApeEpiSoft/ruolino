@@ -36,6 +36,14 @@ Il simulatore riempie i giorni futuri seguendo le priorità e calcola inizio e f
 | **Archivio** | Attività completate con ricerca (titoli, note, sottoattività, note delle ore), filtri per categoria e anno, scarto tra ore effettive e stimate. In testa la **precisione delle stime** con il fattore di correzione (vedi sotto) |
 | **Impostazioni** | Sincronizzazione Dropbox e backup, conflitti da controllare, ore per giorno della settimana, eccezioni per data o periodo (ferie, trasferte), export/import JSON, **CSV per Excel** (attività e ore registrate) |
 
+**Date fisse e "non prima del"** (scheda dell'attività, sezione *Date*):
+- **Da fare il / Fino al**: l'attività si fa solo in quei giorni (uno o più, es. una trasferta), prima di tutte le altre.
+  Le ore rimanenti sono divise in parti uguali sui giorni lavorativi dell'intervallo; le altre attività usano le ore che avanzano.
+  Il pulsante *Usa … come ore rimanenti* occupa tutte le ore disponibili di quei giorni.
+  Se le ore superano la capacità del giorno compare *⚠ giornata piena*. Se i giorni passano e restano ore: *Date passate*, da spostare o completare.
+  Posizione nella coda, predecessori, limite ore/giorno e correzione delle stime non valgono per queste attività.
+- **Non prima del**: l'attività resta nella coda ma non riceve ore prima di quella data (es. materiale in arrivo).
+
 **Correzione delle stime.** L'archivio confronta le ore effettive di ogni attività completata con la sua stima *originale*
 (quella data all'inizio, che non cambia quando correggi il residuo). Il fattore è il rapporto tra ore effettive e stimate,
 per categoria e in generale, sulle ultime 20 attività di ciascun gruppo. Spuntando *Applica la correzione alle date previste*

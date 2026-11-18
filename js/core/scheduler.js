@@ -18,6 +18,15 @@
 // le ore "proprie" della macro (non assegnate a sottoattività) vengono per
 // ultime. Il limite ore/giorno vale per la macro intera.
 //
+// Vincoli di data (solo sulle macro):
+//  - DATE FISSE (fixedStart … fixedEnd): l'attività si fa solo in quei giorni,
+//    PRIMA di tutto il resto, con le ore rimanenti divise in parti uguali sui
+//    giorni lavorativi dell'intervallo. Ignora coda, predecessori e limite
+//    giornaliero; se supera la capacità il giorno è "sovraccarico".
+//    Se l'intervallo è passato e restano ore: stato 'expired'.
+//  - NON PRIMA DEL (notBefore): l'attività resta in coda ma non riceve ore
+//    prima di quella data.
+//
 // Tutti i calcoli interni sono in QUARTI D'ORA interi, per evitare errori di
 // arrotondamento con i numeri decimali.
 //
@@ -82,8 +91,12 @@ export function schedule(doc, today, opzioni = {}) {
     }
     if (m.status === 'done') { r.state = 'done'; continue; }
 
+    // Date fisse: l'attività si fa SOLO in quei giorni (vedi giorniFissi).
+    const fisso = m.fixedStart ? giorniFissi(doc, m) : null;
     // Unità: sottoattività attive in ordine, poi le ore proprie della macro.
-    const f = fattoreDi(m);
+    // Il fattore di correzione non si applica alle date fisse: le ore di una
+    // trasferta o di un appuntamento non "si allungano".
+    const f = fisso ? 1 : fattoreDi(m);
     const unità = [];
     for (const c of figli) {
       if (c.status === 'done' || c.status === 'paused') continue;
@@ -99,9 +112,12 @@ export function schedule(doc, today, opzioni = {}) {
       m,
       unità,
       i: 0, // indice dell'unità corrente
-      preds: (m.predecessors || []).filter((p) => doc.tasks[p] && !doc.tasks[p].deletedAt && p !== m.id),
+      // Le date fisse vincono sui predecessori: vengono ignorati.
+      preds: fisso ? [] : (m.predecessors || []).filter((p) => doc.tasks[p] && !doc.tasks[p].deletedAt && p !== m.id),
       finita: unità.length === 0, // niente da fare: considerata già finita
       oggiQ: 0, // quarti assegnati nel giorno corrente
+      fisso, // null oppure { dal, al, giorni: [date in cui distribuire le ore] }
+      nonPrima: !fisso && m.notBefore ? m.notBefore : null,
     };
     if (m.status === 'paused') { r.state = 'paused'; r.reason = 'In pausa'; }
   }
@@ -160,12 +176,42 @@ export function schedule(doc, today, opzioni = {}) {
     (giorni[data] = giorni[data] || []).push({ taskId: unitàId, macroId: s.m.id, hours: h });
   };
 
+  const fisse = attive.filter((s) => s.fisso);
+  const sovraccarichi = {}; // data → ore oltre la capacità (per le date fisse)
+
   const oreOggi = aQuarti(loggedOn(doc, today));
   let giorno = today;
   for (let n = 0; n < horizonDays; n++, giorno = addDays(giorno, 1)) {
     if (attive.every((s) => s.finita)) break;
     let cap = aQuarti(capacityOn(doc, giorno, weekday));
     if (n === 0) cap = Math.max(0, cap - oreOggi);
+
+    // 3a. Prima di tutto le attività a date fisse: le ore che restano sono
+    //     distribuite in parti uguali sui giorni fissati che mancano (oggi
+    //     compreso). Se superano la capacità il giorno risulta sovraccarico.
+    for (const s of fisse) {
+      if (s.finita) continue;
+      const k = s.fisso.giorni.indexOf(giorno);
+      if (k < 0) continue;
+      const giorniRimasti = s.fisso.giorni.length - k;
+      let qq = Math.ceil(s.unità.slice(s.i).reduce((t, u) => t + u.rem, 0) / giorniRimasti);
+      while (qq > 0 && s.i < s.unità.length) {
+        const u = s.unità[s.i];
+        const x = Math.min(u.rem, qq);
+        assegna(s, u.id, giorno, x);
+        u.rem -= x; qq -= x; cap -= x;
+        if (u.rem === 0) {
+          if (u.id !== s.m.id) risultati[u.id].end = giorno;
+          s.i++;
+        }
+      }
+      if (s.i >= s.unità.length) { s.finita = true; risultati[s.m.id].end = giorno; }
+    }
+    if (cap < 0) {
+      sovraccarichi[giorno] = aOre(-cap);
+      cap = 0;
+    }
+
     if (cap <= 0) continue;
     for (const s of attive) s.oggiQ = 0;
 
@@ -174,7 +220,8 @@ export function schedule(doc, today, opzioni = {}) {
       progresso = false;
       for (const s of attive) {
         if (cap <= 0) break;
-        if (s.finita || !s.preds.every(predFinito)) continue;
+        if (s.finita || s.fisso || !s.preds.every(predFinito)) continue;
+        if (s.nonPrima && giorno < s.nonPrima) continue;
         const limite = s.m.maxPerDay > 0 ? aQuarti(s.m.maxPerDay) : Infinity;
         while (cap > 0 && s.oggiQ < limite && s.i < s.unità.length) {
           const u = s.unità[s.i];
@@ -207,6 +254,11 @@ export function schedule(doc, today, opzioni = {}) {
     if (r.state === 'done') continue;
     if (esclusa[m.id]) {
       if (r.state !== 'paused') { r.state = 'blocked'; r.reason = esclusa[m.id]; }
+    } else if (!s.finita && s.fisso && s.fisso.al < today) {
+      // Date fisse passate con ore ancora da fare: decide l'utente (sposta o completa).
+      r.state = 'expired';
+      r.reason = 'Date fissate passate';
+      r.late = true;
     } else if (!s.finita) {
       r.state = 'unscheduled';
       const p = s.preds.find((x) => !predFinito(x));
@@ -223,13 +275,29 @@ export function schedule(doc, today, opzioni = {}) {
         rc.reason = r.reason;
       }
     }
+    // Giorni sovraccarichi in cui lavora questa attività a date fisse.
+    if (s && s.fisso) r.overload = Object.keys(r.days).filter((g) => sovraccarichi[g]);
     // In ritardo: fine prevista oltre la scadenza, oppure scadenza senza fine prevista.
-    if (m.deadline) {
+    if (m.deadline && r.state !== 'expired') {
       r.late = r.end ? r.end > m.deadline : (r.state !== 'planned' || (!r.exhausted && s.unità.length > 0));
     }
   }
 
-  return { today, horizonEnd, tasks: risultati, days: giorni };
+  return { today, horizonEnd, tasks: risultati, days: giorni, overload: sovraccarichi };
+}
+
+/**
+ * Giorni di un'attività a date fisse: dal `fixedStart` al `fixedEnd` (o solo
+ * `fixedStart`), solo quelli con capacità > 0. Se nessuno ne ha (es. un
+ * sabato), tutti i giorni dell'intervallo. Limite di sicurezza: 366 giorni.
+ */
+export function giorniFissi(doc, m) {
+  const dal = m.fixedStart;
+  const al = m.fixedEnd && m.fixedEnd > dal ? m.fixedEnd : dal;
+  const tutti = [];
+  for (let g = dal; g <= al && tutti.length < 366; g = addDays(g, 1)) tutti.push(g);
+  const lavorativi = tutti.filter((g) => capacityOn(doc, g, weekday) > 0);
+  return { dal, al, giorni: lavorativi.length ? lavorativi : tutti };
 }
 
 /**

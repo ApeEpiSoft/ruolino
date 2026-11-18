@@ -36,7 +36,7 @@ export function aCsv(righe) {
 export function csvAttivita(doc, plan = null, wm = workedMap(doc)) {
   const righe = [[
     'Macro-attività', 'Sottoattività', 'Categoria', 'Stato', 'Stima originale (h)', 'Stima attuale (h)',
-    'Ore lavorate', 'Ore rimanenti', 'Scadenza', 'Inizio previsto', 'Fine prevista', 'Completata il', 'Note',
+    'Ore lavorate', 'Ore rimanenti', 'Scadenza', 'Data fissa dal', 'Data fissa al', 'Non prima del', 'Inizio previsto', 'Fine prevista', 'Completata il', 'Note',
   ]];
   const riga = (m, t) => {
     const s = summary(doc, t.id, wm);
@@ -45,7 +45,7 @@ export function csvAttivita(doc, plan = null, wm = workedMap(doc)) {
     righe.push([
       m.title, t === m ? '' : t.title, m.category || '', STATI[statoEffettivo(doc, t, wm)],
       num(s.estimateOriginal), num(s.estimate), num(s.worked), num(s.remaining),
-      t.deadline || '', previsto ? p.start || '' : '', previsto ? p.end || '' : '', t.completedAt || '', t.notes || '',
+      t.deadline || '', t.fixedStart || '', t.fixedStart ? t.fixedEnd || t.fixedStart : '', t.notBefore || '', previsto ? p.start || '' : '', previsto ? p.end || '' : '', t.completedAt || '', t.notes || '',
     ]);
   };
   for (const m of macros(doc)) {

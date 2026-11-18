@@ -3,8 +3,8 @@
 // giorni e gli avvisi (ritardi, blocchi, stime esaurite).
 // =============================================================================
 
-import { html, useState, fmtOre, fmtNum, parseOre } from './util.js';
-import { macros, addLog, loggedOn, capacityOn } from '../core/model.js';
+import { html, useState, fmtOre, fmtNum, fmtIntervallo, parseOre } from './util.js';
+import { macros, addLog, loggedOn, capacityOn, summary } from '../core/model.js';
 import { mutate } from '../store.js';
 import { addDays, weekday, formatBreve, formatLungo } from '../core/dates.js';
 
@@ -55,7 +55,11 @@ export function VistaOggi({ ctx }) {
 
   // Avvisi.
   const attive = macros(doc).filter((m) => m.status !== 'done');
-  const ritardi = attive.filter((m) => plan.tasks[m.id].late);
+  const ritardi = attive.filter((m) => plan.tasks[m.id].late && plan.tasks[m.id].state !== 'expired');
+  const passate = attive.filter((m) => plan.tasks[m.id].state === 'expired');
+  // Giornate sovraccariche (date fisse oltre la capacità) nelle prossime due settimane.
+  const limite = addDays(today, 14);
+  const sovraccarichi = Object.entries(plan.overload || {}).filter(([g]) => g <= limite).sort();
   const bloccate = attive.filter((m) => ['blocked', 'unscheduled'].includes(plan.tasks[m.id].state) && m.status !== 'paused');
   const esaurite = attive.filter((m) => plan.tasks[m.id].exhausted && m.status !== 'paused');
 
@@ -86,9 +90,14 @@ export function VistaOggi({ ctx }) {
             : html`<p>Niente di pianificabile oggi (attività in pausa o bloccate).</p>`}
         </div>`}
 
-      ${ritardi.length || bloccate.length || esaurite.length ? html`
+      ${ritardi.length || bloccate.length || esaurite.length || passate.length || sovraccarichi.length ? html`
         <h3>Avvisi</h3>
         <ul class="avvisi">
+          ${passate.map((m) => html`<li class="tardi" onClick=${() => apriEditor(m.id)}>
+            <b>${m.title}</b>: le date fissate (${fmtIntervallo(m.fixedStart, m.fixedEnd)}) sono passate e restano ${fmtOre(summary(doc, m.id).remaining)}:
+            sposta le date o completala</li>`)}
+          ${sovraccarichi.map(([g, h]) => html`<li class="avviso">
+            <b>${g === today ? 'Oggi' : formatBreve(g)}</b>: le attività a data fissa superano di ${fmtOre(h)} le ore disponibili</li>`)}
           ${ritardi.map((m) => html`<li class="tardi" onClick=${() => apriEditor(m.id)}>
             <b>${m.title}</b>: fine prevista ${plan.tasks[m.id].end ? formatBreve(plan.tasks[m.id].end) : 'non calcolabile'}, scadenza ${formatBreve(m.deadline)}</li>`)}
           ${bloccate.map((m) => html`<li class="avviso" onClick=${() => apriEditor(m.id)}>

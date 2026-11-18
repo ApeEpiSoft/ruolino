@@ -9,10 +9,11 @@
 import { html, useState, useEffect, fmtOre, fmtNum, parseOre, useSortable } from './util.js';
 import {
   macros, children, summary, addTask, updateTask, deleteTask, moveTask,
-  setRemaining, live, deleteLog, statoEffettivo, STATI,
+  setRemaining, live, deleteLog, statoEffettivo, capacityOn, STATI,
 } from '../core/model.js';
 import { mutate } from '../store.js';
-import { formatBreve, formatCorto } from '../core/dates.js';
+import { formatBreve, formatCorto, weekday } from '../core/dates.js';
+import { giorniFissi } from '../core/scheduler.js';
 import { finePrevista } from './coda.js';
 
 /**
@@ -136,11 +137,27 @@ export function Editor({ id, ctx, onChiudi }) {
           <label>Scadenza
             <input type="date" value=${m.deadline || ''} onChange=${(e) => agg({ deadline: e.target.value || null })} />
           </label>
-          <label title="Lascia vuoto per nessun limite">Max ore al giorno
-            <${Ore} valore=${m.maxPerDay} vuotoNull placeholder="nessun limite"
+          <label title=${m.fixedStart ? 'Non vale per le attività a date fisse' : 'Lascia vuoto per nessun limite'}>Max ore al giorno
+            <${Ore} valore=${m.maxPerDay} vuotoNull placeholder="nessun limite" disabled=${!!m.fixedStart}
               onSalva=${(v) => agg({ maxPerDay: v || null })} />
           </label>
         </div>
+
+        <h3>Date</h3>
+        <div class="griglia">
+          <label title="L'attività si fa solo in questi giorni, prima di tutte le altre">Da fare il (data fissa)
+            <input type="date" value=${m.fixedStart || ''} onChange=${(e) => agg({ fixedStart: e.target.value || null })} />
+          </label>
+          <label title="Per un'attività su più giorni, es. una trasferta">Fino al (se più giorni)
+            <input type="date" value=${m.fixedEnd || ''} min=${m.fixedStart || ''} disabled=${!m.fixedStart}
+              onChange=${(e) => agg({ fixedEnd: e.target.value || null })} />
+          </label>
+          <label title=${m.fixedStart ? 'Non serve con le date fisse' : 'Resta in coda ma non inizia prima di questa data'}>Non prima del
+            <input type="date" value=${m.notBefore || ''} disabled=${!!m.fixedStart}
+              onChange=${(e) => agg({ notBefore: e.target.value || null })} />
+          </label>
+        </div>
+        <${InfoDate} m=${m} r=${r} s=${s} figli=${figli} doc=${doc} />
 
         <h3>Ore</h3>
         <div class="griglia">
@@ -215,6 +232,29 @@ export function Editor({ id, ctx, onChiudi }) {
         </footer>
       </div>
     </div>`;
+}
+
+/** Spiegazione dei vincoli di data impostati, con eventuali avvisi. */
+function InfoDate({ m, r, s, figli, doc }) {
+  if (m.fixedStart) {
+    const g = giorniFissi(doc, m);
+    const disponibili = g.giorni.reduce((t, x) => t + capacityOn(doc, x, weekday), 0);
+    const nGiorni = g.giorni.length;
+    const puòUsare = !figli.length && m.status !== 'done' && disponibili > 0 && disponibili !== s.remaining;
+    return html`
+      <p class="info-date">
+        📌 Si fa solo ${nGiorni === 1 ? 'in quel giorno' : `in ${nGiorni} giorni`}, prima delle altre attività;
+        le ore rimanenti sono divise in parti uguali. Ore disponibili in quei giorni: <b>${fmtOre(disponibili)}</b>.
+        ${puòUsare ? html` <button class="link" onClick=${() => mutate((d) => setRemaining(d, m.id, disponibili))}
+          title="Per una trasferta: occupa tutte le ore di quei giorni">Usa ${fmtOre(disponibili)} come ore rimanenti</button>` : null}
+      </p>
+      ${r && r.overload && r.overload.length ? html`<p class="info-date avviso">⚠ Ore oltre la capacità il
+        ${r.overload.map(formatBreve).join(', ')}: in quei giorni le altre attività non avanzano.</p>` : null}`;
+  }
+  if (m.notBefore) {
+    return html`<p class="info-date">Resta nella coda ma non inizia prima del <b>${formatBreve(m.notBefore)}</b>.</p>`;
+  }
+  return null;
 }
 
 function NoteCampo({ valore, onSalva }) {

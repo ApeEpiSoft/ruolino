@@ -461,3 +461,15 @@ label.check.correzione { margin: 0.3rem 0; font-weight: 600; }
 button.icona.pausa { flex: none; font-size: 0.8rem; padding: 0.3rem 0.45rem; }
 .riga.stato-paused button.icona.pausa { color: var(--ok); font-size: 0.95rem; }
 @media (max-width: 720px) { button.icona.pausa { padding: 0.3rem 0.3rem; } }
+
+/* ---------- Vincoli di data: date fisse, non prima del ---------- */
+:root { --fisso: #6a4fb3; --fisso-chiaro: #efeaf9; }
+@media (prefers-color-scheme: dark) { :root { --fisso: #b39ddb; --fisso-chiaro: #2a2438; } }
+.chip.fisso { background: var(--fisso-chiaro); color: var(--fisso); }
+.chip.sovraccarico { background: var(--avviso-chiaro); color: var(--avviso); }
+.info-date { font-size: 0.86rem; color: var(--muto); margin: 0.2rem 0 0.4rem; }
+.info-date.avviso { color: var(--avviso); }
+.g-banda.fisso { background: var(--fisso-chiaro); }
+.g-blocco.fisso { background: var(--fisso); }
+.legenda .l-fisso { background: var(--fisso); }
+.g-giorni span.sovraccarico { color: var(--tardi); font-weight: 700; opacity: 1; }

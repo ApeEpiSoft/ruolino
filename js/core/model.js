@@ -199,6 +199,9 @@ export function addTask(doc, fields, posizione = 'bottom') {
     estimateOriginal: est,
     order: chiaveEstremo(fratelli, posizione),
     deadline: fields.deadline || null,
+    fixedStart: fields.fixedStart || null, // date fisse: dal …
+    fixedEnd: fields.fixedEnd || null, //            … al (null = un giorno solo)
+    notBefore: fields.notBefore || null, // non prima del
     predecessors: fields.predecessors || [],
     maxPerDay: fields.maxPerDay ? q(fields.maxPerDay) : null,
     createdAt: Date.now(),
@@ -218,6 +221,12 @@ export function updateTask(doc, id, patch) {
   if ('estimateOriginal' in p) p.estimateOriginal = q(p.estimateOriginal);
   if ('maxPerDay' in p) p.maxPerDay = p.maxPerDay ? q(p.maxPerDay) : null;
   if ('title' in p) p.title = (p.title || '').trim() || 'Senza titolo';
+  // Date fisse: "al" prima di "dal" (o senza "dal") non ha senso.
+  if ('fixedStart' in p || 'fixedEnd' in p) {
+    const dal = 'fixedStart' in p ? p.fixedStart : t.fixedStart;
+    const al = 'fixedEnd' in p ? p.fixedEnd : t.fixedEnd;
+    if (!dal || (al && al <= dal)) p.fixedEnd = null;
+  }
   if ('status' in p && p.status !== t.status) {
     p.completedAt = p.status === 'done' ? todayISO() : null;
   }

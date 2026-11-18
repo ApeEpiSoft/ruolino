@@ -81,7 +81,7 @@ export function VistaPiano({ ctx }) {
       <div class="riepilogo">
         ${ultima ? html`<span>coda finita il <b>${formatBreve(ultima)}</b></span>` : null}
         ${opzioni.factor ? html`<span>con le stime corrette dalle statistiche</span>` : null}
-        <span class="legenda"><i class="l-ore"></i> ore pianificate · <i class="l-scad"></i> scadenza · <i class="l-libero"></i> giorno non lavorativo</span>
+        <span class="legenda"><i class="l-ore"></i> ore pianificate · <i class="l-fisso"></i> date fisse · <i class="l-scad"></i> scadenza · <i class="l-libero"></i> giorno non lavorativo</span>
       </div>
 
       <div class="gantt" style="--w:${W}px">
@@ -113,7 +113,8 @@ export function VistaPiano({ ctx }) {
                   const wd = weekday(g);
                   if (scala === 'settimane' && wd !== 1) return null;
                   return html`<span style="left:${i * W}px;${scala === 'giorni' ? 'width:' + W + 'px' : ''}"
-                    class=${cap[g] <= 0 ? 'festivo' : ''}>${scala === 'giorni' ? html`${INIZIALI[wd]}<br />` : null}${Number(g.slice(8))}</span>`;
+                    class="${cap[g] <= 0 ? 'festivo' : ''} ${plan.overload && plan.overload[g] ? 'sovraccarico' : ''}"
+                    title=${plan.overload && plan.overload[g] ? `Giornata sovraccarica: ${fmtOre(plan.overload[g])} oltre le ore disponibili` : ''}>${scala === 'giorni' ? html`${INIZIALI[wd]}<br />` : null}${Number(g.slice(8))}</span>`;
                 })}
               </div>
             </div>
@@ -125,11 +126,11 @@ export function VistaPiano({ ctx }) {
               const fineIdx = pianificata ? (indice[r.end] ?? date.length - 1) : 0;
               return html`<div class="g-riga livello-${livello}" key=${t.id} onClick=${() => apriEditor(macro.id)}>
                 ${pianificata ? html`
-                  <div class="g-banda ${tardi ? 'tardi' : ''}" style="left:${indice[r.start] * W}px;width:${(fineIdx - indice[r.start] + 1) * W}px"></div>
+                  <div class="g-banda ${tardi ? 'tardi' : ''} ${macro.fixedStart ? 'fisso' : ''}" style="left:${indice[r.start] * W}px;width:${(fineIdx - indice[r.start] + 1) * W}px"></div>
                   ${Object.entries(r.days).map(([g, h]) => indice[g] === undefined ? null : html`
-                    <div class="g-blocco ${tardi ? 'tardi' : ''}" title="${formatBreve(g)}: ${fmtOre(h)}"
+                    <div class="g-blocco ${tardi ? 'tardi' : ''} ${macro.fixedStart ? 'fisso' : ''}" title="${formatBreve(g)}: ${fmtOre(h)}"
                       style="left:${indice[g] * W + 1}px;height:${Math.round(4 + 18 * Math.min(1, h / (cap[g] || h)))}px"></div>`)}`
-                : html`<span class="g-motivo">${finePrevista(r).testo}${r && r.reason && r.state !== 'paused' ? ': ' + r.reason : ''}</span>`}
+                : html`<span class="g-motivo">${finePrevista(r).testo}${r && r.reason && !['paused', 'expired'].includes(r.state) ? ': ' + r.reason : ''}</span>`}
                 ${t.deadline && indice[t.deadline] !== undefined ? html`
                   <div class="g-scad" style="left:${indice[t.deadline] * W + W - 2}px" title="Scadenza ${formatBreve(t.deadline)}"></div>` : null}
               </div>`;

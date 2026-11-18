@@ -3,7 +3,7 @@
 // data di fine prevista accanto a ciascuna.
 // =============================================================================
 
-import { html, useState, useRef, useMemo, fmtOre, parseOre, useSortable, Barra, Slittamento } from './util.js';
+import { html, useState, useRef, useMemo, fmtOre, fmtIntervallo, parseOre, useSortable, Barra, Slittamento } from './util.js';
 import { macros, children, summary, addTask, moveTask, updateTask, statoEffettivo, STATI } from '../core/model.js';
 import { mutate } from '../store.js';
 import { formatBreve } from '../core/dates.js';
@@ -21,6 +21,7 @@ export function finePrevista(r, s = null) {
   switch (r.state) {
     case 'done': return { testo: 'Completata', classe: 'ok' };
     case 'paused': return { testo: 'In pausa', classe: 'muto' };
+    case 'expired': return { testo: 'Date passate', classe: 'tardi', titolo: 'Le date fissate sono passate e restano ore: sposta le date o completala' };
     case 'blocked':
     case 'unscheduled': return { testo: 'Non pianificabile', classe: 'avviso', titolo: r.reason };
     default:
@@ -111,6 +112,16 @@ function InserimentoRapido({ posizione, onChiudi, ctx }) {
     </form>`;
 }
 
+/** Etichette dei vincoli di data: 📌 date fisse, "dal …" (non prima del), sovraccarico. */
+export function ChipDate({ m, r, today }) {
+  return html`
+    ${m.fixedStart ? html`<span class="chip fisso" title="Date fisse: si fa solo in questi giorni">📌 ${fmtIntervallo(m.fixedStart, m.fixedEnd)}</span>` : null}
+    ${!m.fixedStart && m.notBefore && m.notBefore > today
+      ? html`<span class="chip" title="Non prima del ${formatBreve(m.notBefore)}">dal ${fmtIntervallo(m.notBefore)}</span>` : null}
+    ${r && r.overload && r.overload.length
+      ? html`<span class="chip sovraccarico" title="Ore oltre la capacità: ${r.overload.map(formatBreve).join(', ')}">⚠ giornata piena</span>` : null}`;
+}
+
 /** Una riga della coda. */
 function RigaMacro({ m, ctx, indice }) {
   const { doc, plan, wm, slitta, apriEditor } = ctx;
@@ -131,7 +142,8 @@ function RigaMacro({ m, ctx, indice }) {
             ${m.title}
             ${m.category ? html`<span class="chip cat">${m.category}</span>` : null}
             ${stato === 'doing' ? html`<span class="chip stato-doing">In corso</span>` : null}
-            ${m.maxPerDay ? html`<span class="chip" title="Limite ore al giorno">max ${fmtOre(m.maxPerDay)}/g</span>` : null}
+            ${m.maxPerDay && !m.fixedStart ? html`<span class="chip" title="Limite ore al giorno">max ${fmtOre(m.maxPerDay)}/g</span>` : null}
+            <${ChipDate} m=${m} r=${r} today=${ctx.today} />
           </div>
           <div class="dettagli">
             <span>${fmtOre(s.worked)} / ${fmtOre(s.estimate)}</span>

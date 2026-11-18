@@ -75,6 +75,16 @@ export function useSortable(onMove, opzioni = {}) {
   return ref;
 }
 
+const MESI_BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+/** Intervallo di date compatto: "18 nov", "19–23 nov", "30 nov – 2 dic". */
+export function fmtIntervallo(dal, al) {
+  const g = (s) => Number(s.slice(8));
+  const m = (s) => MESI_BREVI[Number(s.slice(5, 7)) - 1];
+  if (!al || al === dal) return `${g(dal)} ${m(dal)}`;
+  if (dal.slice(0, 7) === al.slice(0, 7)) return `${g(dal)}–${g(al)} ${m(al)}`;
+  return `${g(dal)} ${m(dal)} – ${g(al)} ${m(al)}`;
+}
+
 /** Piccolo componente: barra di avanzamento 0..1. */
 export function Barra({ valore, classe = '' }) {
   const p = Math.round(Math.max(0, Math.min(1, valore || 0)) * 100);
