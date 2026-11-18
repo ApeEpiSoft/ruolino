@@ -182,6 +182,12 @@ export class Dropbox {
       if (r.ok || r.status === 409) return r;
       const testo = await r.text().catch(() => '');
       if (r.status === 429) throw new ErroreServer('Troppe richieste a Dropbox: riprovo più tardi', 429);
+      // Permessi mancanti nell'app Dropbox (scheda Permissions): il token ha
+      // i permessi del momento del login, quindi dopo averli corretti serve ricollegarsi.
+      if (/not permitted to access this endpoint|missing_scope|required scope/i.test(testo)) {
+        throw new ErroreServer('L\'app Dropbox non ha i permessi necessari. Sulla console di Dropbox, scheda Permissions, '
+          + 'spunta files.metadata.read, files.content.read e files.content.write e premi Submit; poi qui premi Scollega e ricollegati.', r.status);
+      }
       throw new ErroreServer(`Errore Dropbox ${r.status}: ${testo.slice(0, 200)}`, r.status);
     }
   }
