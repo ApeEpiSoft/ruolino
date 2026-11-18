@@ -44,6 +44,13 @@ Il simulatore riempie i giorni futuri seguendo le priorità e calcola inizio e f
   Posizione nella coda, predecessori, limite ore/giorno e correzione delle stime non valgono per queste attività.
 - **Non prima del**: l'attività resta nella coda ma non riceve ore prima di quella data (es. materiale in arrivo).
 
+**Profili** (Impostazioni → Profili): sullo stesso dispositivo puoi avere più profili, ognuno con attività,
+impostazioni e collegamento Dropbox propri (es. lavoro e personale, con due account Dropbox diversi).
+Il profilo che c'era prima resta "Principale" con tutti i suoi dati. Con almeno due profili, in alto compare il menu
+per passare dall'uno all'altro. Collegando Dropbox in un profilo, Dropbox chiede di accedere: usa l'account di quel profilo.
+Lo stesso account non può essere collegato a due profili dello stesso dispositivo, altrimenti i dati si mescolerebbero.
+Eliminare un profilo cancella i suoi dati solo da quel dispositivo: su Dropbox restano.
+
 **Correzione delle stime.** L'archivio confronta le ore effettive di ogni attività completata con la sua stima *originale*
 (quella data all'inizio, che non cambia quando correggi il residuo). Il fattore è il rapporto tra ore effettive e stimate,
 per categoria e in generale, sulle ultime 20 attività di ciascun gruppo. Spuntando *Applica la correzione alle date previste*

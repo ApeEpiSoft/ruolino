@@ -11,7 +11,7 @@
 // l'app mostra "Nuova versione disponibile" e, alla conferma, si ricarica.
 // =============================================================================
 
-const VERSIONE = '3.1.0';
+const VERSIONE = '3.2.0';
 const CACHE = 'ruolino-' + VERSIONE;
 
 const FILE = [
@@ -46,6 +46,7 @@ const FILE = [
   'js/ui/impostazioni.js',
   'js/ui/oggi.js',
   'js/ui/piano.js',
+  'js/ui/profili.js',
   'js/ui/registro.js',
   'js/ui/sync.js',
   'js/ui/util.js',

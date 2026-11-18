@@ -7,7 +7,8 @@
 // =============================================================================
 
 import { html, render, useState, useEffect, useMemo } from './ui/util.js';
-import { state, init, subscribe, salvaSnapshot, snapshotPrecedente, mutate } from './store.js';
+import { state, init, subscribe, salvaSnapshot, snapshotPrecedente, mutate, profili, profiloAttivo } from './store.js';
+import { SelettoreProfilo } from './ui/profili.js';
 import { schedule, slittamenti } from './core/scheduler.js';
 import { macros, workedMap, live, capacityOn, confirmNoWork } from './core/model.js';
 import { todayISO, addDays, weekday, formatBreve, toISO } from './core/dates.js';
@@ -130,11 +131,16 @@ function App() {
   };
   const ctx = { doc, plan, wm, opzioni, today, slitta, vai, apriEditor: setEditorId };
   const mancante = giornoSenzaOre(doc, today);
+  document.title = profili.elenco.length > 1 ? `Ruolino · ${profiloAttivo().nome}` : 'Ruolino';
   const nConflitti = conflittiAttivi(doc).length;
 
   return html`
     <header class="testata">
       <h1>Ruolino</h1>
+      <${SelettoreProfilo} onGestisci=${() => {
+        vai('impostazioni');
+        setTimeout(() => document.getElementById('profili')?.scrollIntoView(), 50);
+      }} />
       <${IndicatoreSync} onClick=${() => vai('impostazioni')} />
       <nav class="nav">
         ${VISTE.map((v) => html`

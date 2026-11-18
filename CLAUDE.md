@@ -97,6 +97,15 @@ Il modello è una coda di lavoro con capacità giornaliera:
 - **Quando si sincronizza** (`sync/sincronizzazione.js`): all'avvio, 3 s dopo ogni modifica, quando torna online o in primo piano, ogni 5 minuti, e subito quando la pagina va in background con modifiche pendenti.
 - Le modifiche dell'utente passano da `mutate()` o `applicaDoc(doc)`, che avvisano `onMutate`. Quelle della sincronizzazione usano `applicaDoc(doc, {daSync: true})`.
 
+## Profili (solo locali, `store.js`)
+
+- Chiave IndexedDB `profili` = `{elenco: [{id, nome}], attivo}`. Il profilo `principale` usa le chiavi senza prefisso (dati della prima versione, nessuna migrazione).
+  Gli altri usano il prefisso `p-<id>/`.
+- Le chiavi comuni a tutti i profili sono solo `deviceId`, `appKey` e `profili`. Tutto il resto passa da `archivio` / `chiave()`, mai da `leggi`/`scrivi` diretti.
+- Per cambiare profilo: `attivaProfilo` salva e ricarica la pagina, così sincronizzazione e stato ripartono puliti.
+- Con più profili il login Dropbox usa `force_reauthentication`.
+  Dopo il login, se l'account è già collegato a un altro profilo, il collegamento viene annullato (`accountAltriProfili`).
+
 ## Architettura
 
 ```

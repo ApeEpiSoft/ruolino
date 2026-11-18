@@ -5,13 +5,14 @@
 
 import { html, useState, fmtOre, parseOre } from './util.js';
 import { setWeekly, setException, deleteException, live, getDevice, SCHEMA } from '../core/model.js';
-import { mutate, applicaDoc, salvaOra } from '../store.js';
+import { mutate, applicaDoc, salvaOra, profili, profiloAttivo } from '../store.js';
 import { merge, restoreFrom } from '../core/merge.js';
 import { SezioneSync, SezioneConflitti, conflittiAttivi } from './sync.js';
 import { VERSIONE_APP } from '../versione.js';
 import { addDays, formatBreve, NOMI_GIORNI } from '../core/dates.js';
 import { Ore } from './editor.js';
 import { csvAttivita, csvOre } from '../core/csv.js';
+import { SezioneProfili } from './profili.js';
 
 const ORDINE_GIORNI = [1, 2, 3, 4, 5, 6, 0]; // lunedì … domenica
 
@@ -77,7 +78,11 @@ export function VistaImpostazioni({ ctx }) {
 
   const esporta = async () => {
     await salvaOra();
-    scarica(`ruolino-${today}.json`, JSON.stringify(doc, null, 2));
+    // Con più profili il nome del file dice di quale profilo sono i dati.
+    const nome = profili.elenco.length > 1
+      ? '-' + profiloAttivo().nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      : '';
+    scarica(`ruolino${nome}-${today}.json`, JSON.stringify(doc, null, 2));
   };
 
   /**
@@ -115,6 +120,9 @@ export function VistaImpostazioni({ ctx }) {
     <section class="vista impostazioni">
       <h2 id="sincronizzazione">Sincronizzazione Dropbox</h2>
       <${SezioneSync} />
+
+      <h2 id="profili">Profili</h2>
+      <${SezioneProfili} />
 
       ${conflittiAttivi(doc).length ? html`
         <h2 id="conflitti">Conflitti da controllare</h2>

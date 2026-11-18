@@ -76,8 +76,12 @@ export class Dropbox {
     return !!(this.token && this.token.refresh);
   }
 
-  /** Avvia il login: salva il verificatore PKCE e va alla pagina di Dropbox. */
-  async avviaLogin() {
+  /**
+   * Avvia il login: salva il verificatore PKCE e va alla pagina di Dropbox.
+   * Con `scegliAccount` Dropbox chiede di accedere di nuovo, così si può
+   * collegare un account diverso da quello già aperto nel browser (profili).
+   */
+  async avviaLogin({ scegliAccount = false } = {}) {
     const verificatore = casuale(48);
     const stato = casuale(16);
     const ritorno = indirizzoRitorno();
@@ -91,6 +95,7 @@ export class Dropbox {
       token_access_type: 'offline',
       state: stato,
     });
+    if (scegliAccount) p.set('force_reauthentication', 'true');
     location.assign(URL_AUTORIZZA + '?' + p.toString());
   }
 

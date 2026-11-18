@@ -15,6 +15,13 @@
 //   'syncMeta'      { rev, dirty, lastSync, lastBackup } della sincronizzazione
 //   'dropboxToken'  token OAuth di Dropbox; 'dropboxPkce' login in corso
 //   'appKey'        App key Dropbox inserita a mano (se non c'è in config.js)
+//   'profili'       { elenco: [{id, nome}], attivo } — profili di questo dispositivo
+//
+// PROFILI: ogni profilo ha dati e collegamento Dropbox propri. Il profilo
+// 'principale' usa le chiavi qui sopra così come sono (i dati esistenti non
+// vanno spostati); gli altri le usano con il prefisso 'p-<id>/'.
+// Sono comuni a tutti i profili solo 'deviceId', 'appKey' e 'profili'.
+// Cambiare profilo ricarica la pagina (vedi attivaProfilo).
 // =============================================================================
 
 import { createEmptyDoc, normalizeDoc, setDevice } from './core/model.js';
@@ -56,6 +63,93 @@ async function scrivi(chiave, valore) {
   });
 }
 
+async function cancella(chiave) {
+  const db = await apriDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(ARCHIVIO, 'readwrite');
+    tx.objectStore(ARCHIVIO).delete(chiave);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Profili
+// -----------------------------------------------------------------------------
+
+export const PRINCIPALE = 'principale';
+const CHIAVI_COMUNI = new Set(['deviceId', 'appKey', 'profili']);
+/** Chiavi di un profilo (cancellate quando si elimina il profilo). */
+const CHIAVI_PROFILO = ['doc', 'snapshots', 'syncBase', 'syncMeta', 'dropboxToken', 'dropboxPkce'];
+
+/** Profili di questo dispositivo (caricati da init). */
+export const profili = { elenco: [{ id: PRINCIPALE, nome: 'Principale' }], attivo: PRINCIPALE };
+
+/** Chiave effettiva nel database per il profilo `id` (default: quello attivo). */
+function chiave(k, id = profili.attivo) {
+  return CHIAVI_COMUNI.has(k) || id === PRINCIPALE ? k : `p-${id}/${k}`;
+}
+
+async function salvaProfili() {
+  await scrivi('profili', { elenco: profili.elenco, attivo: profili.attivo });
+  notifica(); // ridisegna (nomi dei profili nella testata e in Impostazioni)
+}
+
+/** Profilo attivo ({id, nome}). */
+export function profiloAttivo() {
+  return profili.elenco.find((p) => p.id === profili.attivo) || profili.elenco[0];
+}
+
+/** Crea un profilo vuoto (non lo attiva). */
+export async function creaProfilo(nome) {
+  const p = { id: newId().slice(0, 8), nome: (nome || '').trim() || 'Nuovo profilo' };
+  profili.elenco.push(p);
+  await salvaProfili();
+  return p;
+}
+
+export async function rinominaProfilo(id, nome) {
+  const p = profili.elenco.find((x) => x.id === id);
+  if (!p || !(nome || '').trim()) return;
+  p.nome = nome.trim();
+  await salvaProfili();
+}
+
+/**
+ * Elimina un profilo da questo dispositivo, con i suoi dati locali.
+ * I dati su Dropbox restano. Non si può eliminare il profilo attivo né il principale.
+ */
+export async function eliminaProfilo(id) {
+  if (id === profili.attivo || id === PRINCIPALE) return;
+  for (const k of CHIAVI_PROFILO) await cancella(chiave(k, id));
+  profili.elenco = profili.elenco.filter((p) => p.id !== id);
+  await salvaProfili();
+}
+
+/**
+ * Account Dropbox collegati agli ALTRI profili di questo dispositivo:
+ * [{ profilo, account, email }]. Serve a impedire che due profili usino lo
+ * stesso account (i loro dati finirebbero nello stesso file e si mescolerebbero).
+ */
+export async function accountAltriProfili() {
+  const out = [];
+  for (const p of profili.elenco) {
+    if (p.id === profili.attivo) continue;
+    const t = await leggi(chiave('dropboxToken', p.id));
+    if (t && t.refresh) out.push({ profilo: p.nome, account: t.account, email: t.email });
+  }
+  return out;
+}
+
+/** Passa a un altro profilo: salva, registra la scelta e ricarica la pagina. */
+export async function attivaProfilo(id) {
+  if (!profili.elenco.some((p) => p.id === id)) return;
+  await salvaOra();
+  profili.attivo = id;
+  await salvaProfili();
+  location.reload();
+}
+
 // -----------------------------------------------------------------------------
 // Stato in memoria
 // -----------------------------------------------------------------------------
@@ -84,8 +178,8 @@ export function onMutate(fn) {
 
 /** Archivio chiave-valore persistente, usato anche dalla sincronizzazione. */
 export const archivio = {
-  leggi: (k) => leggi(k),
-  scrivi: (k, v) => scrivi(k, v),
+  leggi: (k) => leggi(chiave(k)),
+  scrivi: (k, v) => scrivi(chiave(k), v),
 };
 function notifica() {
   state.version++;
@@ -100,11 +194,16 @@ export async function init() {
     await scrivi('deviceId', dev);
   }
   setDevice(dev);
-  const salvato = await leggi('doc');
+  const p = await leggi('profili');
+  if (p && Array.isArray(p.elenco) && p.elenco.length) {
+    profili.elenco = p.elenco;
+    profili.attivo = p.elenco.some((x) => x.id === p.attivo) ? p.attivo : p.elenco[0].id;
+  }
+  const salvato = await leggi(chiave('doc'));
   state.doc = salvato ? normalizeDoc(salvato) : createEmptyDoc();
   osservaTimestamp(state.doc);
-  state.snapshots = (await leggi('snapshots')) || {};
-  if (!salvato) await scrivi('doc', state.doc);
+  state.snapshots = (await leggi(chiave('snapshots'))) || {};
+  if (!salvato) await scrivi(chiave('doc'), state.doc);
   notifica();
 }
 
@@ -137,7 +236,7 @@ export async function salvaOra() {
   clearTimeout(timerSalvataggio);
   timerSalvataggio = null;
   try {
-    await scrivi('doc', state.doc);
+    await scrivi(chiave('doc'), state.doc);
     state.errore = null;
   } catch (e) {
     state.errore = 'Salvataggio locale non riuscito: ' + e.message;
@@ -170,7 +269,7 @@ export function salvaSnapshot(data, fini) {
   const date = Object.keys(state.snapshots).sort();
   while (date.length > 14) delete state.snapshots[date.shift()];
   clearTimeout(timerSnap);
-  timerSnap = setTimeout(() => scrivi('snapshots', state.snapshots).catch(() => {}), 1000);
+  timerSnap = setTimeout(() => scrivi(chiave('snapshots'), state.snapshots).catch(() => {}), 1000);
 }
 
 /** Ultimo snapshot di un giorno precedente a `data` (o null). */

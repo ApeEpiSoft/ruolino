@@ -11,7 +11,7 @@
 //   - ogni 5 minuti mentre l'app è aperta e visibile.
 // =============================================================================
 
-import { state, archivio, applicaDoc, onMutate } from '../store.js';
+import { state, archivio, applicaDoc, onMutate, profili, accountAltriProfili } from '../store.js';
 import { Dropbox, indirizzoRitorno } from './dropbox.js';
 import { Motore } from './motore.js';
 import { ErroreRete, ErroreAutorizzazione, ErroreDati } from './errori.js';
@@ -83,6 +83,17 @@ export async function initSync() {
     } else {
       try {
         await dbx.completaLogin(p);
+        // Lo stesso account su due profili mescolerebbe i loro dati: si annulla.
+        const doppio = (await accountAltriProfili()).find((a) => a.account && a.account === dbx.token.account);
+        if (doppio) {
+          const email = dbx.token.email || 'questo account';
+          await dbx.scollega();
+          aggiorna({
+            fase: 'scollegato', account: null,
+            messaggio: `${email} è già collegato al profilo "${doppio.profilo}": per questo profilo usa un altro account Dropbox.`,
+          });
+          return;
+        }
       } catch (e) {
         aggiorna({ fase: 'errore', messaggio: e.message });
       }
@@ -149,7 +160,8 @@ export async function sincronizzaOra() {
 /** Avvia il collegamento a Dropbox (porta alla pagina di login). */
 export async function collega() {
   if (!dbx) throw new Error('Inserisci prima la App key di Dropbox');
-  await dbx.avviaLogin();
+  // Con più profili Dropbox chiede di accedere: si sceglie l'account giusto.
+  await dbx.avviaLogin({ scegliAccount: profili.elenco.length > 1 });
 }
 
 /**
