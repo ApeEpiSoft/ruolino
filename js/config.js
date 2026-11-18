@@ -8,7 +8,7 @@
 // (viene salvata solo su quel dispositivo).
 // =============================================================================
 
-export const DROPBOX_APP_KEY = '';
+export const DROPBOX_APP_KEY = '75yzm7t5xjllv3k';
 
 /** Percorso del file dati, relativo alla cartella dell'app su Dropbox. */
 export const PERCORSO_DATI = '/ruolino.json';
