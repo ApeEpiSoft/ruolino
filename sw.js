@@ -11,7 +11,7 @@
 // l'app mostra "Nuova versione disponibile" e, alla conferma, si ricarica.
 // =============================================================================
 
-const VERSIONE = '3.2.0';
+const VERSIONE = '3.2.1';
 const CACHE = 'ruolino-' + VERSIONE;
 
 const FILE = [

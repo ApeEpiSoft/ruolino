@@ -488,3 +488,18 @@ button.icona.pausa { flex: none; font-size: 0.8rem; padding: 0.3rem 0.45rem; }
 .profili li { display: flex; gap: 0.5rem; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid var(--bordo); }
 .profili li input { flex: 1; }
 .profili li.attivo input { font-weight: 600; }
+
+/* ---------- Eccezioni raggruppate in periodi ---------- */
+.eccezioni li.periodo { display: block; padding: 0; }
+.riga-periodo { display: flex; gap: 0.8rem; align-items: center; padding: 0.25rem 0; font-size: 0.9rem; }
+.riga-periodo .data { width: 14rem; flex: none; }
+.riga-periodo .ore, .giorni-periodo .ore { width: 3.5rem; flex: none; }
+.riga-periodo .titolo { flex: 1; color: var(--muto); }
+.giorni-periodo { margin: 0 0 0.4rem 1.2rem; border-left: 2px solid var(--bordo); padding-left: 0.6rem; }
+.giorni-periodo li { font-size: 0.85rem; }
+@media (max-width: 720px) {
+  .riga-periodo { flex-wrap: wrap; gap: 0.1rem 0.6rem; }
+  .riga-periodo .data { width: 100%; font-weight: 600; }
+  .riga-periodo .titolo { min-width: 0; }
+}
+.riga-periodo button.icona:not(.elimina) { font-size: 1rem; }

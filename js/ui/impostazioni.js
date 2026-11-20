@@ -4,12 +4,12 @@
 // =============================================================================
 
 import { html, useState, fmtOre, parseOre } from './util.js';
-import { setWeekly, setException, deleteException, live, getDevice, SCHEMA } from '../core/model.js';
+import { setWeekly, setException, deleteException, live, getDevice, gruppiEccezioni, SCHEMA } from '../core/model.js';
 import { mutate, applicaDoc, salvaOra, profili, profiloAttivo } from '../store.js';
 import { merge, restoreFrom } from '../core/merge.js';
 import { SezioneSync, SezioneConflitti, conflittiAttivi } from './sync.js';
 import { VERSIONE_APP } from '../versione.js';
-import { addDays, formatBreve, NOMI_GIORNI } from '../core/dates.js';
+import { addDays, weekday, formatBreve, NOMI_GIORNI } from '../core/dates.js';
 import { Ore } from './editor.js';
 import { csvAttivita, csvOre } from '../core/csv.js';
 import { SezioneProfili } from './profili.js';
@@ -49,12 +49,10 @@ function Eccezioni({ doc, today }) {
     setDal(''); setAl(''); setNota('');
   };
 
-  const riga = (e) => html`<li key=${e.id}>
-    <span class="data">${formatBreve(e.date)}</span>
-    <span>${fmtOre(e.hours)}</span>
-    <span class="titolo">${e.note}</span>
-    <button class="icona elimina" title="Rimuovi eccezione" onClick=${() => mutate((d) => deleteException(d, e.date))}>✕</button>
-  </li>`;
+  // Le date consecutive con stesse ore e motivo sono mostrate come un unico periodo.
+  const gruppiFuturi = gruppiEccezioni(doc, future, weekday);
+  const gruppiPassati = gruppiEccezioni(doc, passate.slice().reverse(), weekday).reverse();
+  const riga = (g) => html`<${RigaPeriodo} key=${g.voci[0].id} g=${g} />`;
 
   return html`
     <form class="eccezione-nuova" onSubmit=${aggiungi}>
@@ -65,10 +63,36 @@ function Eccezioni({ doc, today }) {
         onInput=${(e) => setNota(e.target.value)} /></label>
       <button class="pri">Aggiungi</button>
     </form>
-    ${future.length ? html`<ul class="eccezioni">${future.map(riga)}</ul>` : html`<p class="muto">Nessuna eccezione futura.</p>`}
+    ${gruppiFuturi.length ? html`<ul class="eccezioni">${gruppiFuturi.map(riga)}</ul>` : html`<p class="muto">Nessuna eccezione futura.</p>`}
     ${passate.length ? html`
-      <button class="link" onClick=${() => setMostraPassate(!mostraPassate)}>${mostraPassate ? '▾' : '▸'} Passate (${passate.length})</button>
-      ${mostraPassate ? html`<ul class="eccezioni muto">${passate.map(riga)}</ul>` : null}` : null}`;
+      <button class="link" onClick=${() => setMostraPassate(!mostraPassate)}>${mostraPassate ? '▾' : '▸'} Passate (${passate.length} ${passate.length === 1 ? 'giorno' : 'giorni'})</button>
+      ${mostraPassate ? html`<ul class="eccezioni muto">${gruppiPassati.map(riga)}</ul>` : null}` : null}`;
+}
+
+/** Un periodo di eccezioni: una riga, apribile per vedere e togliere i singoli giorni. */
+function RigaPeriodo({ g }) {
+  const [aperto, setAperto] = useState(false);
+  const n = g.voci.length;
+  const togli = (voci) => mutate((d) => { for (const e of voci) deleteException(d, e.date); });
+  return html`<li class="periodo">
+    <div class="riga-periodo">
+      <span class="data">${g.dal === g.al ? formatBreve(g.dal) : `${formatBreve(g.dal)} – ${formatBreve(g.al)}`}</span>
+      <span class="ore">${fmtOre(g.hours)}</span>
+      <span class="titolo">${g.note}${n > 1 ? html` <span class="muto piccolo">(${n} giorni)</span>` : null}</span>
+      ${n > 1 ? html`<button class="icona" title=${aperto ? 'Nascondi i giorni' : 'Mostra i singoli giorni'}
+        onClick=${() => setAperto(!aperto)}>${aperto ? '▾' : '▸'}</button>` : null}
+      <button class="icona elimina" title=${n > 1 ? 'Rimuovi tutto il periodo' : 'Rimuovi eccezione'}
+        onClick=${() => (n === 1 || confirm(`Rimuovere le ${n} eccezioni dal ${formatBreve(g.dal)} al ${formatBreve(g.al)}?`)) && togli(g.voci)}>✕</button>
+    </div>
+    ${aperto ? html`<ul class="eccezioni giorni-periodo">
+      ${g.voci.map((e) => html`<li key=${e.id}>
+        <span class="data">${formatBreve(e.date)}</span>
+        <span class="ore">${fmtOre(e.hours)}</span>
+        <span class="titolo"></span>
+        <button class="icona elimina" title="Rimuovi solo questo giorno" onClick=${() => togli([e])}>✕</button>
+      </li>`)}
+    </ul>` : null}
+  </li>`;
 }
 
 export function VistaImpostazioni({ ctx }) {

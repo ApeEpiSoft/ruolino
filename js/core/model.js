@@ -26,7 +26,7 @@
 
 import { newId, now } from './ids.js';
 import { keyBetween, compareOrder } from './order.js';
-import { todayISO } from './dates.js';
+import { todayISO, addDays } from './dates.js';
 
 export const SCHEMA = 1;
 
@@ -359,6 +359,32 @@ export function deleteException(doc, date) {
   if (!r) return;
   r.deletedAt = Date.now();
   touch(r);
+}
+
+/**
+ * Raggruppa le eccezioni (vive, ordinate per data) in periodi: date
+ * consecutive con le stesse ore e lo stesso motivo. Tra due date del periodo
+ * possono esserci solo giorni senza eccezione e senza ore settimanali (es. un
+ * weekend non inserito). Restituisce [{ dal, al, hours, note, voci: [eccezioni] }].
+ */
+export function gruppiEccezioni(doc, elenco, weekdayFn) {
+  const liberiTra = (a, b) => {
+    for (let g = addDays(a, 1), i = 0; g < b; g = addDays(g, 1), i++) {
+      if (i > 7 || capacityOn(doc, g, weekdayFn) > 0) return false;
+    }
+    return true;
+  };
+  const gruppi = [];
+  for (const e of elenco) {
+    const g = gruppi[gruppi.length - 1];
+    if (g && g.hours === Number(e.hours || 0) && g.note === (e.note || '').trim() && liberiTra(g.al, e.date)) {
+      g.al = e.date;
+      g.voci.push(e);
+    } else {
+      gruppi.push({ dal: e.date, al: e.date, hours: Number(e.hours || 0), note: (e.note || '').trim(), voci: [e] });
+    }
+  }
+  return gruppi;
 }
 
 /** Capacità (ore) di una data: eccezione se presente, altrimenti settimanale. */

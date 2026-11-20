@@ -7,7 +7,35 @@ import { keyBetween, compareOrder } from '../js/core/order.js';
 import {
   createEmptyDoc, addTask, updateTask, deleteTask, moveTask, macros, children,
   summary, addLog, setRemaining, live, setException, capacityOn, normalizeDoc, statoEffettivo,
+  gruppiEccezioni,
 } from '../js/core/model.js';
+
+test('eccezioni: date consecutive con stesse ore e motivo diventano un periodo', () => {
+  const d = createEmptyDoc();
+  // Ferie lun 21 dic – ven 1 gen 2027, weekend 26-27 dic inseriti, 2-3 gen no (sab-dom), poi lun 4.
+  for (let g = '2026-12-21'; g <= '2027-01-01'; g = addDays(g, 1)) setException(d, g, 0, 'Ferie');
+  setException(d, '2027-01-04', 0, 'Ferie');
+  setException(d, '2026-12-08', 0, 'Festa');
+  setException(d, '2026-11-20', 4.5, '');
+  setException(d, '2026-11-23', 4.5, ''); // lunedì dopo un weekend libero: stesso periodo
+  setException(d, '2026-12-09', 0, 'ferie'); // motivo diverso (maiuscola): periodo diverso
+  const elenco = live(d.exceptions).sort((a, b) => a.date.localeCompare(b.date));
+  const gr = gruppiEccezioni(d, elenco, weekday);
+  assert.deepEqual(gr.map((g) => [g.dal, g.al, g.voci.length, g.note]), [
+    ['2026-11-20', '2026-11-23', 2, ''],
+    ['2026-12-08', '2026-12-08', 1, 'Festa'],
+    ['2026-12-09', '2026-12-09', 1, 'ferie'],
+    ['2026-12-21', '2027-01-04', 13, 'Ferie'],
+  ]);
+});
+
+test('eccezioni: un giorno lavorativo senza eccezione interrompe il periodo', () => {
+  const d = createEmptyDoc();
+  setException(d, '2026-11-16', 0, 'Ferie');
+  setException(d, '2026-11-18', 0, 'Ferie'); // martedì 17 è lavorativo
+  const elenco = live(d.exceptions).sort((a, b) => a.date.localeCompare(b.date));
+  assert.equal(gruppiEccezioni(d, elenco, weekday).length, 2);
+});
 import { addDays, weekday, diffDays } from '../js/core/dates.js';
 
 test('ordine: chiavi sempre crescenti inserendo in fondo, in cima e in mezzo', () => {
