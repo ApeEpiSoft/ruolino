@@ -65,8 +65,19 @@ function Eccezioni({ doc, today }) {
     </form>
     ${gruppiFuturi.length ? html`<ul class="eccezioni">${gruppiFuturi.map(riga)}</ul>` : html`<p class="muto">Nessuna eccezione futura.</p>`}
     ${passate.length ? html`
-      <button class="link" onClick=${() => setMostraPassate(!mostraPassate)}>${mostraPassate ? '▾' : '▸'} Passate (${passate.length} ${passate.length === 1 ? 'giorno' : 'giorni'})</button>
-      ${mostraPassate ? html`<ul class="eccezioni muto">${gruppiPassati.map(riga)}</ul>` : null}` : null}`;
+      <ul class="eccezioni passate">
+        <li class="periodo">
+          <div class="riga-periodo cliccabile" onClick=${() => setMostraPassate(!mostraPassate)}
+            title=${mostraPassate ? 'Nascondi le eccezioni passate' : 'Mostra le eccezioni passate'}>
+            <span class="data">${passate.length === 1 ? formatBreve(passate[0].date)
+              : `${formatBreve(passate[passate.length - 1].date)} – ${formatBreve(passate[0].date)}`}</span>
+            <span class="ore"></span>
+            <span class="titolo">Passate <span class="muto piccolo">(${passate.length} ${passate.length === 1 ? 'giorno' : 'giorni'})</span></span>
+            <button class="icona">${mostraPassate ? '▾' : '▸'}</button>
+          </div>
+          ${mostraPassate ? html`<ul class="eccezioni giorni-periodo">${gruppiPassati.map(riga)}</ul>` : null}
+        </li>
+      </ul>` : null}`;
 }
 
 /** Un periodo di eccezioni: una riga, apribile per vedere e togliere i singoli giorni. */

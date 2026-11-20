@@ -503,3 +503,7 @@ button.icona.pausa { flex: none; font-size: 0.8rem; padding: 0.3rem 0.45rem; }
   .riga-periodo .titolo { min-width: 0; }
 }
 .riga-periodo button.icona:not(.elimina) { font-size: 1rem; }
+.riga-periodo.cliccabile { cursor: pointer; }
+.riga-periodo.cliccabile:hover { background: var(--primario-chiaro); }
+.eccezioni.passate .riga-periodo.cliccabile .data { color: var(--muto); }
+.eccezioni.passate .giorni-periodo { color: var(--muto); }
